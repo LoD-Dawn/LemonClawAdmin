@@ -1,0 +1,106 @@
+import { redirect } from 'next/navigation'
+import type { Prisma } from '@prisma/client'
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { ModelsClient } from './ModelsClient'
+import { Visibility } from '@/types'
+import {
+  canManageResource,
+  getViewableResourceFilter,
+  resolveAdminAccessScope,
+} from '@/lib/admin-access'
+import { sanitizeManagementModelProviders } from '@/lib/model-provider-presenter'
+import { AdminPageHeader } from '@/components/layout/admin-page-header'
+import { AdminStatCard } from '@/components/layout/admin-stat-card'
+import { Bot, CheckCircle2, Eye } from 'lucide-react'
+
+export default async function ModelsPage() {
+  const session = await auth()
+  if (!session?.user) {
+    redirect('/login')
+  }
+
+  const page = 1
+  const pageSize = 10
+  const accessScope = await resolveAdminAccessScope(session.user)
+  const managementMode = accessScope.managementMode
+  const resourceFilter = getViewableResourceFilter(session.user, {
+    scopedOrganizationIds: accessScope.scopedOrganizationIds,
+  }) as Prisma.ModelProviderWhereInput
+  const organizationsWhere = managementMode === 'super_admin'
+    ? {}
+    : managementMode === 'department_admin'
+    ? { id: { in: accessScope.scopedOrganizationIds.length > 0 ? accessScope.scopedOrganizationIds : ['__forbidden__'] } }
+    : { id: '__forbidden__' }
+
+  const [providers, organizations, total, enabledCount] = await Promise.all([
+    db.modelProvider.findMany({
+      where: { isActive: true, ...resourceFilter },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        owner: { select: { id: true, name: true, organizationId: true } },
+        organization: { select: { id: true, name: true } },
+        models: {
+          where: { isActive: true },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        },
+      },
+    }),
+    db.organization.findMany({ where: organizationsWhere, orderBy: { path: 'asc' } }),
+    db.modelProvider.count({ where: { isActive: true, ...resourceFilter } }),
+    db.modelProvider.count({ where: { isActive: true, enabled: true, ...resourceFilter } }),
+  ])
+
+  const typedProviders = sanitizeManagementModelProviders(providers.map((provider) => ({
+    ...provider,
+    visibility: provider.visibility as Visibility,
+    canManage: canManageResource(session.user, provider, {
+      scopedOrganizationIds: accessScope.scopedOrganizationIds,
+    }),
+  })))
+
+  const pageTitle = managementMode === 'super_admin'
+    ? '模型管理'
+    : managementMode === 'department_admin'
+    ? '部门模型管理'
+    : '我的模型配置'
+  const pageDescription = managementMode === 'super_admin'
+    ? '统一维护模型提供商、默认模型和客户端分发配置，避免多个客户端各自保存一份模型清单。'
+    : managementMode === 'department_admin'
+    ? '聚焦部门范围内的模型配置，确保团队使用的提供商和默认模型保持一致。'
+    : '维护你自己的模型配置，便于在客户端里快速切换个人专用的模型提供商。'
+  const ownershipLabel = managementMode === 'super_admin'
+    ? '全局配置池'
+    : managementMode === 'department_admin'
+    ? '部门范围'
+    : '个人可见'
+
+  return (
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Model"
+        title={pageTitle}
+        description={pageDescription}
+      />
+      <div className="grid gap-4 md:grid-cols-3">
+        <AdminStatCard label="当前总量" value={total} icon={Bot} hint="已启用提供商数量" />
+        <AdminStatCard label="启用中" value={enabledCount} icon={CheckCircle2} tone="sky" hint="客户端当前可选" />
+        <AdminStatCard label="管理视角" value={ownershipLabel} icon={Eye} tone="emerald" hint="依据角色动态调整" />
+      </div>
+      <ModelsClient
+        initialProviders={typedProviders}
+        initialOrganizations={organizations}
+        managementMode={managementMode}
+        managedDepartmentId={session.user.departmentId}
+        initialPagination={{
+          page: 1,
+          pageSize: 10,
+          pageCount: Math.ceil(total / 10),
+          total,
+        }}
+      />
+    </div>
+  )
+}

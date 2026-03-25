@@ -1,0 +1,271 @@
+import { NextRequest, NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
+import { requireAdmin } from '@/middleware/admin-only'
+import { db } from '@/lib/db'
+import { z } from 'zod'
+import { revokeActiveGrants } from '@/lib/resource-grants'
+import {
+  normalizeUserPermissionInput,
+  validateUserPermissionScope,
+} from '@/lib/user-role-policy'
+import { recordOperationLog } from '@/lib/operation-log'
+
+const PROTECTED_ADMIN_EMAIL = 'admin@local.com'
+
+const updateSchema = z.object({
+  email: z.string().email().optional(),
+  password: z.string().min(8).optional(),
+  name: z.string().min(1).max(255).optional(),
+  organizationId: z.string().uuid().nullable().optional(),
+  isSuperAdmin: z.boolean().optional(),
+  isDepartmentAdmin: z.boolean().optional(),
+  departmentId: z.string().uuid().nullable().optional(),
+  isActive: z.boolean().optional()
+})
+
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await requireAdmin(request)
+  if (authResult instanceof NextResponse) return authResult
+
+  const { id } = await params
+  const user = await db.user.findUnique({
+    where: { id },
+    select: {
+      id: true, email: true, name: true, organizationId: true,
+      isSuperAdmin: true, isDepartmentAdmin: true, departmentId: true, isActive: true, createdAt: true, updatedAt: true,
+      organization: { select: { id: true, name: true } },
+      department: { select: { id: true, name: true } },
+    }
+  })
+
+  if (!user) {
+    return NextResponse.json(
+      { error: 'User not found', code: 'NOT_FOUND_USER' },
+      { status: 404 }
+    )
+  }
+
+  return NextResponse.json({ data: user })
+}
+
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await requireAdmin(request)
+  if (authResult instanceof NextResponse) return authResult
+
+  const { id } = await params
+  const body = await request.json()
+  const parsed = updateSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid request', code: 'VALIDATION_ERROR' },
+      { status: 400 }
+    )
+  }
+
+  const existingUser = await db.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      organizationId: true,
+      isSuperAdmin: true,
+      isDepartmentAdmin: true,
+      departmentId: true,
+      isActive: true,
+    },
+  })
+
+  if (!existingUser) {
+    return NextResponse.json(
+      { error: 'User not found', code: 'NOT_FOUND_USER' },
+      { status: 404 }
+    )
+  }
+
+  if (existingUser.email === PROTECTED_ADMIN_EMAIL) {
+    return NextResponse.json(
+      { error: 'Protected admin account cannot be edited', code: 'CONFLICT_PROTECTED_ADMIN_EDIT' },
+      { status: 409 }
+    )
+  }
+
+  const updateData: Record<string, unknown> = { ...parsed.data }
+  if (updateData.password) {
+    const bcryptModule = await import('bcryptjs')
+    updateData.passwordHash = await bcryptModule.hash(updateData.password as string, 12)
+    delete updateData.password
+  }
+
+  const hasPermissionFieldUpdate = ['organizationId', 'isSuperAdmin', 'isDepartmentAdmin', 'departmentId']
+    .some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key))
+
+  if (hasPermissionFieldUpdate) {
+    const nextPermissionState = normalizeUserPermissionInput({
+      organizationId: Object.prototype.hasOwnProperty.call(parsed.data, 'organizationId')
+        ? parsed.data.organizationId
+        : existingUser.organizationId,
+      isSuperAdmin: Object.prototype.hasOwnProperty.call(parsed.data, 'isSuperAdmin')
+        ? parsed.data.isSuperAdmin
+        : existingUser.isSuperAdmin,
+      isDepartmentAdmin: Object.prototype.hasOwnProperty.call(parsed.data, 'isDepartmentAdmin')
+        ? parsed.data.isDepartmentAdmin
+        : existingUser.isDepartmentAdmin,
+      departmentId: Object.prototype.hasOwnProperty.call(parsed.data, 'departmentId')
+        ? parsed.data.departmentId
+        : existingUser.departmentId,
+    })
+
+    const [organization, department] = await Promise.all([
+      nextPermissionState.organizationId
+        ? db.organization.findUnique({
+            where: { id: nextPermissionState.organizationId },
+            select: { id: true, name: true, type: true },
+          })
+        : Promise.resolve(null),
+      nextPermissionState.departmentId
+        ? db.organization.findUnique({
+            where: { id: nextPermissionState.departmentId },
+            select: { id: true, name: true, type: true },
+          })
+        : Promise.resolve(null),
+    ])
+
+    const validationIssue = validateUserPermissionScope({
+      data: nextPermissionState,
+      organization,
+      department,
+    })
+
+    if (validationIssue) {
+      return NextResponse.json(validationIssue, { status: 400 })
+    }
+
+    updateData.organizationId = nextPermissionState.organizationId
+    updateData.isSuperAdmin = nextPermissionState.isSuperAdmin
+    updateData.isDepartmentAdmin = nextPermissionState.isDepartmentAdmin
+    updateData.departmentId = nextPermissionState.departmentId
+  }
+
+  const user = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const updatedUser = await tx.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true, email: true, name: true, organizationId: true,
+        isSuperAdmin: true, isDepartmentAdmin: true, departmentId: true, isActive: true, createdAt: true, updatedAt: true,
+        organization: { select: { id: true, name: true } },
+        department: { select: { id: true, name: true } },
+      }
+    })
+
+    if (updateData.isActive === false) {
+      const revokedAt = new Date()
+      await revokeActiveGrants(tx, { userId: id, revokedAt })
+      await tx.resourceApplication.updateMany({
+        where: { userId: id, status: 'approved' },
+        data: { status: 'revoked' },
+      })
+      await tx.oAuthToken.deleteMany({ where: { userId: id } })
+    }
+
+    return updatedUser
+  })
+
+  await recordOperationLog({
+    request,
+    actor: authResult,
+    module: 'users',
+    action: 'user.update',
+    targetType: 'user',
+    targetId: user.id,
+    targetName: user.email,
+    targetUserId: user.id,
+    summary: `更新用户 ${user.email}`,
+    metadata: {
+      email: user.email,
+      name: user.name,
+      organizationId: user.organizationId,
+      isSuperAdmin: user.isSuperAdmin,
+      isDepartmentAdmin: user.isDepartmentAdmin,
+      departmentId: user.departmentId,
+      isActive: user.isActive,
+      updatedFields: Object.keys(parsed.data).filter((key) => key !== 'password'),
+      passwordChanged: Boolean(parsed.data.password),
+    },
+  })
+
+  return NextResponse.json({ data: user })
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await requireAdmin(request)
+  if (authResult instanceof NextResponse) return authResult
+
+  const { id } = await params
+  const user = await db.user.findUnique({
+    where: { id },
+    select: { id: true, email: true, name: true, isSuperAdmin: true },
+  })
+
+  if (!user) {
+    return NextResponse.json(
+      { error: 'User not found', code: 'NOT_FOUND_USER' },
+      { status: 404 }
+    )
+  }
+
+  if (user.email === PROTECTED_ADMIN_EMAIL) {
+    return NextResponse.json(
+      { error: 'Protected admin account cannot be deleted', code: 'CONFLICT_PROTECTED_ADMIN_DELETE' },
+      { status: 409 }
+    )
+  }
+
+  const deletionSummary = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.resourceGrant.updateMany({
+      where: { grantedBy: id },
+      data: { grantedBy: null },
+    })
+
+    const deletedTokens = await tx.oAuthToken.deleteMany({ where: { userId: id } })
+    const deletedAuthCodes = await tx.oAuthAuthorizationCode.deleteMany({ where: { userId: id } })
+    const deletedGrants = await tx.resourceGrant.deleteMany({ where: { userId: id } })
+    const deletedApplications = await tx.resourceApplication.deleteMany({ where: { userId: id } })
+    const deletedSkills = await tx.skill.deleteMany({ where: { ownerId: id } })
+    const deletedMcps = await tx.mcp.deleteMany({ where: { ownerId: id } })
+    const deletedProviders = await tx.modelProvider.deleteMany({ where: { ownerId: id } })
+
+    await tx.user.delete({ where: { id } })
+
+    return {
+      deletedTokens: deletedTokens.count,
+      deletedAuthCodes: deletedAuthCodes.count,
+      deletedGrants: deletedGrants.count,
+      deletedApplications: deletedApplications.count,
+      deletedSkills: deletedSkills.count,
+      deletedMcps: deletedMcps.count,
+      deletedProviders: deletedProviders.count,
+    }
+  })
+
+  await recordOperationLog({
+    request,
+    actor: authResult,
+    module: 'users',
+    action: 'user.delete',
+    targetType: 'user',
+    targetId: user.id,
+    targetName: user.email ?? null,
+    summary: `删除用户 ${user.email ?? user.id}`,
+    metadata: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      ...deletionSummary,
+    },
+  })
+
+  return NextResponse.json({ success: true })
+}

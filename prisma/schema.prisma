@@ -1,0 +1,349 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationType {
+  company
+  department
+  team
+}
+
+enum Visibility {
+  company
+  department
+  personal
+}
+
+enum ResourceType {
+  skill
+  mcp
+}
+
+enum ResourceApplicationStatus {
+  pending
+  approved
+  rejected
+  revoked
+}
+
+enum OperationActorType {
+  user
+  api_key
+  system
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  type      OrganizationType
+  parentId  String?  @map("parent_id")
+  path      String
+  level     Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent     Organization?  @relation("OrganizationHierarchy", fields: [parentId], references: [id])
+  children   Organization[]  @relation("OrganizationHierarchy")
+  users      User[]
+  departmentUsers User[]  @relation("UserDepartment")
+  skills     Skill[]
+  mcps       Mcp[]
+  modelProviders ModelProvider[]
+
+  @@index([path])
+  @@map("organizations")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  passwordHash   String   @map("password_hash")
+  name           String
+  organizationId String?  @map("organization_id")
+  isSuperAdmin   Boolean  @default(false) @map("is_super_admin")
+  isActive       Boolean  @default(true) @map("is_active")
+  isDepartmentAdmin Boolean @default(false) @map("is_department_admin")
+  departmentId       String? @map("department_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+  department     Organization?  @relation("UserDepartment", fields: [departmentId], references: [id])
+  skills         Skill[]
+  mcps           Mcp[]
+  modelProviders ModelProvider[]
+  oauthTokens    OAuthToken[]
+  oauthAuthorizationCodes OAuthAuthorizationCode[]
+  resourceApplications    ResourceApplication[]
+  resourceGrants          ResourceGrant[]       @relation("GrantedResources")
+  issuedResourceGrants    ResourceGrant[]       @relation("ResourceGrantIssuer")
+  operationLogs           OperationLog[]        @relation("OperationLogActor")
+  targetedOperationLogs   OperationLog[]        @relation("OperationLogTargetUser")
+
+  @@map("users")
+}
+
+model OperationLog {
+  id            String             @id @default(uuid())
+  actorType     OperationActorType @default(user) @map("actor_type")
+  actorUserId   String?            @map("actor_user_id")
+  actorName     String?            @map("actor_name")
+  actorEmail    String?            @map("actor_email")
+  actorClientId String?            @map("actor_client_id")
+  targetType    String             @map("target_type")
+  targetId      String?            @map("target_id")
+  targetName    String?            @map("target_name")
+  targetUserId  String?            @map("target_user_id")
+  module        String
+  action        String
+  summary       String?
+  method        String?
+  path          String?
+  ipAddress     String?            @map("ip_address")
+  userAgent     String?            @map("user_agent")
+  metadataJson  String?            @map("metadata_json")
+  createdAt     DateTime           @default(now()) @map("created_at")
+
+  actorUser  User? @relation("OperationLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUser User? @relation("OperationLogTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([module, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("operation_logs")
+}
+
+model ResourceApplication {
+  id             String   @id @default(uuid())
+  resourceType   ResourceType   @map("resource_type")
+  resourceId     String   @map("resource_id")
+  userId         String   @map("user_id")
+  status         ResourceApplicationStatus   @default(pending)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user           User     @relation(fields: [userId], references: [id])
+  grants         ResourceGrant[]
+
+  @@unique([resourceType, resourceId, userId])
+  @@map("resource_applications")
+}
+
+model ResourceGrant {
+  id                  String               @id @default(uuid())
+  resourceType        ResourceType         @map("resource_type")
+  resourceId          String               @map("resource_id")
+  userId              String               @map("user_id")
+  activeKey           String?              @unique @map("active_key")
+  grantedBy           String?              @map("granted_by")
+  grantedAt           DateTime             @default(now()) @map("granted_at")
+  revokedAt           DateTime?            @map("revoked_at")
+  sourceApplicationId String?              @map("source_application_id")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  user                User                 @relation("GrantedResources", fields: [userId], references: [id])
+  grantor             User?                @relation("ResourceGrantIssuer", fields: [grantedBy], references: [id])
+  sourceApplication   ResourceApplication? @relation(fields: [sourceApplicationId], references: [id])
+
+  @@index([resourceType, resourceId])
+  @@index([resourceType, resourceId, userId, revokedAt])
+  @@index([userId, revokedAt])
+  @@index([sourceApplicationId])
+  @@map("resource_grants")
+}
+
+model Skill {
+  id             String    @id @default(uuid())
+  name           String
+  identifier     String
+  description    String?
+  descriptionEn  String?   @map("description_en")
+  descriptionZh  String?   @map("description_zh")
+  tagsJson       String?   @map("tags_json")
+  packageUrl     String?   @map("package_url")
+  version        String?
+  sourceFrom     String?   @map("source_from")
+  sourceUrl      String?   @map("source_url")
+  sourceAuthor   String?   @map("source_author")
+  visibility     Visibility
+  ownerId        String?   @map("owner_id")
+  organizationId String?   @map("organization_id")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  owner         User?          @relation(fields: [ownerId], references: [id])
+  organization  Organization?   @relation(fields: [organizationId], references: [id])
+
+  @@unique([identifier, organizationId, ownerId])
+  @@index([visibility])
+  @@index([organizationId])
+  @@map("skills")
+}
+
+model SkillTag {
+  id        String   @id
+  en        String
+  zh        String
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive, sortOrder])
+  @@map("skill_tags")
+}
+
+model Mcp {
+  id             String    @id @default(uuid())
+  name           String
+  mcpId          String    @map("identifier")
+  descriptionZh  String?   @map("description")
+  descriptionEn  String?   @map("description_en")
+  category       String    @default("developer")
+  visibility     Visibility
+  ownerId        String?   @map("owner_id")
+  organizationId String?   @map("organization_id")
+  transportType  String    @default("stdio") @map("source_type")
+  command        String    @default("") @map("source_value")
+  defaultArgsJson String   @default("[]") @map("default_args_json")
+  requiredEnvKeysJson String @default("[]") @map("required_env_keys_json")
+  optionalEnvKeysJson String @default("[]") @map("optional_env_keys_json")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  owner         User?          @relation(fields: [ownerId], references: [id])
+  organization  Organization?   @relation(fields: [organizationId], references: [id])
+
+  @@unique([mcpId, organizationId, ownerId])
+  @@index([visibility])
+  @@index([organizationId])
+  @@map("mcps")
+}
+
+model ModelProvider {
+  id                String    @id @default(uuid())
+  providerKey       String    @map("provider_key")
+  name              String
+  enabled           Boolean   @default(true)
+  apiKey            String?   @map("api_key")
+  baseUrl           String?   @map("base_url")
+  apiFormat         String    @default("openai") @map("api_format")
+  codingPlanEnabled Boolean   @default(false) @map("coding_plan_enabled")
+  isDefault         Boolean   @default(false) @map("is_default")
+  defaultModelId    String?   @map("default_model_id")
+  visibility        Visibility
+  ownerId           String?   @map("owner_id")
+  organizationId    String?   @map("organization_id")
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  owner         User?      @relation(fields: [ownerId], references: [id])
+  organization  Organization? @relation(fields: [organizationId], references: [id])
+  models        AiModel[]
+
+  @@unique([providerKey, organizationId, ownerId])
+  @@index([visibility])
+  @@index([organizationId])
+  @@map("model_providers")
+}
+
+model AiModel {
+  id            String   @id @default(uuid())
+  providerId    String   @map("provider_id")
+  modelId       String   @map("model_id")
+  name          String
+  supportsImage Boolean  @default(false) @map("supports_image")
+  isActive      Boolean  @default(true) @map("is_active")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  provider ModelProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, modelId])
+  @@index([providerId, isActive, sortOrder])
+  @@map("ai_models")
+}
+
+model OAuthClient {
+  id                   String   @id @default(uuid())
+  clientId             String   @unique @map("client_id")
+  clientSecretHash     String   @map("client_secret_hash")
+  apiKeyHash           String?  @map("api_key_hash")
+  name                 String
+  allowedRedirectUris  String   @map("allowed_redirect_uris")
+  isActive             Boolean  @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  authorizationCodes OAuthAuthorizationCode[]
+  tokens              OAuthToken[]
+
+  @@map("oauth_clients")
+}
+
+model OAuthAuthorizationCode {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  clientId    String   @map("client_id")
+  userId      String   @map("user_id")
+  redirectUri String   @map("redirect_uri")
+  scope       String
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  client OAuthClient @relation(fields: [clientId], references: [id])
+  user   User        @relation(fields: [userId], references: [id])
+
+  @@index([expiresAt])
+  @@map("oauth_authorization_codes")
+}
+
+model OAuthToken {
+  id           String   @id @default(uuid())
+  clientId     String   @map("client_id")
+  userId       String   @map("user_id")
+  scope        String
+  accessToken  String   @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  client OAuthClient @relation(fields: [clientId], references: [id])
+  user   User        @relation(fields: [userId], references: [id])
+
+  @@index([accessToken])
+  @@index([refreshToken])
+  @@index([expiresAt])
+  @@map("oauth_tokens")
+}
+
+model DesktopVersionRelease {
+  id                     String   @id @default(uuid())
+  singletonKey           String   @unique @default("desktop_release") @map("singleton_key")
+  version                String   @default("")
+  releaseDate            String   @default("") @map("release_date")
+  changeLogZhTitle       String   @default("更新内容") @map("change_log_zh_title")
+  changeLogZhContentJson String   @default("[]") @map("change_log_zh_content_json")
+  changeLogEnTitle       String   @default("What's New") @map("change_log_en_title")
+  changeLogEnContentJson String   @default("[]") @map("change_log_en_content_json")
+  macIntelUrl            String   @default("") @map("mac_intel_url")
+  macArmUrl              String   @default("") @map("mac_arm_url")
+  windowsX64Url          String   @default("") @map("windows_x64_url")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@map("desktop_version_releases")
+}
