@@ -27,6 +27,48 @@ interface User {
   departmentId?: string | null
   organization?: { id: string; name: string } | null
   department?: { id: string; name: string } | null
+  clawQuota?: {
+    isUnlimited: boolean
+    creditBalance: number
+    remainingClawSeconds: number | null
+    pricingVersion: string
+    expiresAt: string | null
+    updatedAt: string
+  } | null
+  usageSummary: {
+    consumedCredits: number
+    usedClawSeconds: number
+    sessions: number
+  }
+}
+
+function formatClawDuration(seconds: number) {
+  if (seconds <= 0) {
+    return '0 分钟'
+  }
+
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+
+  if (hours <= 0) {
+    return `${minutes} 分钟`
+  }
+
+  if (minutes <= 0) {
+    return `${hours} 小时`
+  }
+
+  return `${hours} 小时 ${minutes} 分钟`
+}
+
+function toDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+  const pad = (input: number) => String(input).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 export function UserEditDialog({
@@ -55,14 +97,17 @@ export function UserEditDialog({
   const [role, setRole] = useState<UserRoleValue>(
     user?.isSuperAdmin ? 'super_admin' : user?.isDepartmentAdmin ? 'department_admin' : 'user'
   )
+  const [creditBalance, setCreditBalance] = useState(String(user?.clawQuota?.creditBalance ?? 0))
+  const [pricingVersion, setPricingVersion] = useState(user?.clawQuota?.pricingVersion ?? '2026-03-v2')
+  const [quotaExpiresAt, setQuotaExpiresAt] = useState(toDateTimeLocalValue(user?.clawQuota?.expiresAt))
   const [error, setError] = useState('')
 
   const selectedOrganization = getOrganizationById(organizations, organizationId)
   const allowedRoles = getAllowedUserRoles(selectedOrganization)
   const availableDepartments = getAssignableDepartments(organizations, organizationId)
   const forceOwnDepartment = isDepartmentOrganization(selectedOrganization)
+  const isUnlimitedRole = role === 'super_admin' || role === 'department_admin'
 
-  // Update form when user changes
   useEffect(() => {
     if (user) {
       setName(user.name)
@@ -72,6 +117,9 @@ export function UserEditDialog({
       setOrganizationId(user.organization?.id || '')
       setDepartmentId(user.department?.id || user.departmentId || '')
       setRole(user.isSuperAdmin ? 'super_admin' : user.isDepartmentAdmin ? 'department_admin' : 'user')
+      setCreditBalance(String(user.clawQuota?.creditBalance ?? 0))
+      setPricingVersion(user.clawQuota?.pricingVersion ?? '2026-03-v2')
+      setQuotaExpiresAt(toDateTimeLocalValue(user.clawQuota?.expiresAt))
       setError('')
     }
   }, [user])
@@ -126,6 +174,17 @@ export function UserEditDialog({
       return
     }
 
+    const parsedCreditBalance = Number.parseInt(creditBalance || '0', 10)
+    if (!isUnlimitedRole && (!Number.isFinite(parsedCreditBalance) || parsedCreditBalance < 0)) {
+      setError('积分不能小于 0')
+      return
+    }
+
+    if (!isUnlimitedRole && !pricingVersion.trim()) {
+      setError('计费版本不能为空')
+      return
+    }
+
     if (password && password !== confirmPassword) {
       setError('两次输入的密码不一致')
       return
@@ -147,6 +206,13 @@ export function UserEditDialog({
           isSuperAdmin: role === 'super_admin',
           isDepartmentAdmin: role === 'department_admin',
           departmentId: role === 'department_admin' ? (departmentId || null) : null,
+          ...(isUnlimitedRole
+            ? {}
+            : {
+                creditBalance: parsedCreditBalance,
+                pricingVersion: pricingVersion.trim(),
+                quotaExpiresAt: quotaExpiresAt ? new Date(quotaExpiresAt).toISOString() : null,
+              }),
         }),
       })
 
@@ -172,109 +238,210 @@ export function UserEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[820px]">
         <DialogHeader>
           <DialogTitle>编辑用户</DialogTitle>
-          <DialogDescription>修改用户信息</DialogDescription>
+          <DialogDescription>统一调整账号信息、角色归属和 Claw 使用配置。</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-name">姓名</Label>
-            <Input
-              id="edit-name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-            />
+        <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_320px]">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">姓名</Label>
+                <Input
+                  id="edit-name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">邮箱</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-password">新密码</Label>
+                <Input
+                  id="edit-password"
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                  placeholder="留空则不修改密码"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-confirm-password">确认新密码</Label>
+                <Input
+                  id="edit-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                  placeholder="再次输入新密码"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-organization">组织</Label>
+                <select
+                  id="edit-organization"
+                  value={organizationId}
+                  onChange={e => setOrganizationId(e.target.value)}
+                  className="w-full border rounded-md px-3 py-2 h-10 bg-white"
+                >
+                  <option value="">无</option>
+                  {organizations.map(org => (
+                    <option key={org.id} value={org.id}>{org.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">角色</Label>
+                <select
+                  id="edit-role"
+                  value={role}
+                  onChange={e => setRole(e.target.value as UserRoleValue)}
+                  className={`w-full border rounded-md px-3 py-2 h-10 bg-white ${error ? 'border-destructive' : ''}`}
+                >
+                  {allowedRoles.includes('user') && <option value="user">普通员工</option>}
+                  {allowedRoles.includes('department_admin') && <option value="department_admin">部门管理员</option>}
+                  {allowedRoles.includes('super_admin') && <option value="super_admin">超级管理员</option>}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-department">管理部门</Label>
+              <select
+                id="edit-department"
+                value={departmentId}
+                onChange={e => setDepartmentId(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 h-10 bg-white"
+                disabled={role !== 'department_admin' || forceOwnDepartment}
+              >
+                <option value="">无</option>
+                {availableDepartments.map(org => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </select>
+              {forceOwnDepartment && role === 'department_admin' && (
+                <p className="text-sm text-muted-foreground">所属组织是部门时，管理范围固定为当前部门。</p>
+              )}
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="space-y-3">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Claw 配额设置</div>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    普通员工按照积分控制使用时长。超级管理员和部门管理员默认无限使用，不需要手动设置积分。
+                  </p>
+                </div>
+                {isUnlimitedRole ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    当前角色为管理员，已自动切换为无限使用模式。
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-credit-balance">当前积分</Label>
+                        <Input
+                          id="edit-credit-balance"
+                          type="number"
+                          min={0}
+                          value={creditBalance}
+                          onChange={e => setCreditBalance(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-pricing-version">计费版本</Label>
+                        <Input
+                          id="edit-pricing-version"
+                          value={pricingVersion}
+                          onChange={e => setPricingVersion(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-quota-expires-at">配额过期时间</Label>
+                      <Input
+                        id="edit-quota-expires-at"
+                        type="datetime-local"
+                        value={quotaExpiresAt}
+                        onChange={e => setQuotaExpiresAt(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-email">邮箱</Label>
-            <Input
-              id="edit-email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-password">新密码</Label>
-            <Input
-              id="edit-password"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              minLength={8}
-              autoComplete="new-password"
-              placeholder="留空则不修改密码"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-confirm-password">确认新密码</Label>
-            <Input
-              id="edit-confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              minLength={8}
-              autoComplete="new-password"
-              placeholder="再次输入新密码"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-organization">组织</Label>
-            <select
-              id="edit-organization"
-              value={organizationId}
-              onChange={e => setOrganizationId(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 h-10 bg-white"
-            >
-              <option value="">无</option>
-              {organizations.map(org => (
-                <option key={org.id} value={org.id}>{org.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-role">角色</Label>
-            <select
-              id="edit-role"
-              value={role}
-              onChange={e => setRole(e.target.value as UserRoleValue)}
-              className={`w-full border rounded-md px-3 py-2 h-10 bg-white ${error ? 'border-destructive' : ''}`}
-            >
-              {allowedRoles.includes('user') && <option value="user">普通员工</option>}
-              {allowedRoles.includes('department_admin') && <option value="department_admin">部门管理员</option>}
-              {allowedRoles.includes('super_admin') && <option value="super_admin">超级管理员</option>}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-department">管理部门</Label>
-            <select
-              id="edit-department"
-              value={departmentId}
-              onChange={e => setDepartmentId(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 h-10 bg-white"
-              disabled={role !== 'department_admin' || forceOwnDepartment}
-            >
-              <option value="">无</option>
-              {availableDepartments.map(org => (
-                <option key={org.id} value={org.id}>{org.name}</option>
-              ))}
-            </select>
-            {forceOwnDepartment && role === 'department_admin' && (
-              <p className="text-sm text-muted-foreground">所属组织是部门时，管理范围固定为当前部门。</p>
-            )}
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              保存
-            </Button>
+          <div className="space-y-4">
+            {user ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-slate-400">当前额度</div>
+                    <div className="mt-1 text-base font-semibold text-slate-900">
+                      {user.clawQuota?.isUnlimited ? '无限使用' : `${user.clawQuota?.creditBalance ?? 0} 积分`}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {user.clawQuota?.isUnlimited
+                        ? '管理员角色不受积分限制'
+                        : `约 ${formatClawDuration(user.clawQuota?.remainingClawSeconds ?? 0)}`}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-slate-400">累计消耗</div>
+                    <div className="mt-1 text-base font-semibold text-slate-900">{user.usageSummary.consumedCredits} 积分</div>
+                    <div className="text-xs text-slate-500">{formatClawDuration(user.usageSummary.usedClawSeconds)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-slate-400">会话次数</div>
+                    <div className="mt-1 text-base font-semibold text-slate-900">{user.usageSummary.sessions}</div>
+                    <div className="text-xs text-slate-500">{user.clawQuota?.pricingVersion ?? '2026-03-v2'}</div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">使用情况</div>
+              <div className="mt-3 space-y-3 text-sm text-slate-600">
+                <div className="flex items-center justify-between">
+                  <span>累计会话</span>
+                  <span className="font-medium text-slate-900">{user?.usageSummary.sessions ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>累计时长</span>
+                  <span className="font-medium text-slate-900">{formatClawDuration(user?.usageSummary.usedClawSeconds ?? 0)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>累计扣减</span>
+                  <span className="font-medium text-slate-900">{user?.usageSummary.consumedCredits ?? 0} 积分</span>
+                </div>
+              </div>
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                取消
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                保存
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

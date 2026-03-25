@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { fetchAdminUsersPage } from '@/lib/admin-user-quota'
 import { UsersClient } from './UsersClient'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
 import { AdminStatCard } from '@/components/layout/admin-stat-card'
@@ -18,25 +19,9 @@ export default async function UsersPage() {
   const page = 1
   const pageSize = 10
 
-  const [users, organizations, total, activeCount] = await Promise.all([
-    db.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isSuperAdmin: true,
-        isDepartmentAdmin: true,
-        departmentId: true,
-        isActive: true,
-        organization: { select: { id: true, name: true } },
-        department: { select: { id: true, name: true } },
-      },
-    }),
+  const [userPage, organizations, activeCount] = await Promise.all([
+    fetchAdminUsersPage({ page, pageSize }),
     db.organization.findMany({ orderBy: { path: 'asc' } }),
-    db.user.count(),
     db.user.count({ where: { isActive: true } }),
   ])
 
@@ -53,14 +38,9 @@ export default async function UsersPage() {
         <AdminStatCard label="管理重点" value="角色与归属" icon={ShieldCheck} tone="emerald" hint="控制后台访问边界" />
       </div>
       <UsersClient
-        initialUsers={users}
+        initialUsers={userPage.data}
         initialOrganizations={organizations}
-        initialPagination={{
-          page: 1,
-          pageSize: 10,
-          pageCount: Math.ceil(total / 10),
-          total,
-        }}
+        initialPagination={userPage.pagination}
         currentUserId={session.user.id}
       />
     </div>

@@ -87,6 +87,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           modelId: true,
           name: true,
           supportsImage: true,
+          billingTier: true,
+          billingTierName: true,
+          creditPerMinute: true,
+          maxSessionSeconds: true,
+          toolPolicy: true,
           sortOrder: true,
         },
       },
@@ -148,11 +153,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const nextModels = parsed.data.models
     ? normalizeModelEntries(parsed.data.models)
     : existingProvider.models.map((model) => ({
-        modelId: model.modelId,
-        name: model.name,
-        supportsImage: model.supportsImage,
-        sortOrder: model.sortOrder,
-      }))
+      modelId: model.modelId,
+      name: model.name,
+      supportsImage: model.supportsImage,
+      billingTier: model.billingTier,
+      billingTierName: model.billingTierName,
+      creditPerMinute: model.creditPerMinute,
+      maxSessionSeconds: model.maxSessionSeconds,
+      toolPolicy: model.toolPolicy,
+      sortOrder: model.sortOrder,
+    }))
 
   const requestedDefaultModelId = Object.prototype.hasOwnProperty.call(parsed.data, 'defaultModelId')
     ? providerData.defaultModelId ?? null
@@ -209,12 +219,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               modelId: model.modelId,
               name: model.name,
               supportsImage: model.supportsImage,
+              billingTier: model.billingTier,
+              billingTierName: model.billingTierName,
+              creditPerMinute: model.creditPerMinute,
+              maxSessionSeconds: model.maxSessionSeconds,
+              toolPolicy: model.toolPolicy,
               sortOrder: model.sortOrder,
               isActive: true,
             },
             update: {
               name: model.name,
               supportsImage: model.supportsImage,
+              billingTier: model.billingTier,
+              billingTierName: model.billingTierName,
+              creditPerMinute: model.creditPerMinute,
+              maxSessionSeconds: model.maxSessionSeconds,
+              toolPolicy: model.toolPolicy,
               sortOrder: model.sortOrder,
               isActive: true,
             },

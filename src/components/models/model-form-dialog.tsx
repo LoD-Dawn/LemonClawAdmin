@@ -37,6 +37,11 @@ const formSchema = z.object({
     id: z.string().regex(modelItemIdPattern),
     name: z.string().min(1),
     supportsImage: z.boolean(),
+    billingTier: z.string().min(1),
+    billingTierName: z.string().min(1),
+    creditPerMinute: z.number().int().min(1),
+    maxSessionSeconds: z.number().int().min(60),
+    toolPolicy: z.string().min(1),
   })).min(1),
 }).superRefine((value, context) => {
   if (value.visibility !== 'personal' && !value.organizationId) {
@@ -85,6 +90,11 @@ type EditableProvider = {
     modelId?: string
     name: string
     supportsImage: boolean
+    billingTier?: string
+    billingTierName?: string
+    creditPerMinute?: number
+    maxSessionSeconds?: number
+    toolPolicy?: string
   }>
 }
 
@@ -109,6 +119,11 @@ function toFormValues(
       id: model.modelId ?? model.id,
       name: model.name,
       supportsImage: model.supportsImage,
+      billingTier: model.billingTier ?? 'tier_1',
+      billingTierName: model.billingTierName ?? '标准模型',
+      creditPerMinute: model.creditPerMinute ?? 1,
+      maxSessionSeconds: model.maxSessionSeconds ?? 1200,
+      toolPolicy: model.toolPolicy ?? 'basic',
     }))
 
     return {
@@ -124,7 +139,16 @@ function toFormValues(
       codingPlanEnabled: provider.codingPlanEnabled ?? false,
       isDefault: provider.isDefault ?? false,
       defaultModelId: provider.defaultModelId ?? models[0]?.id ?? null,
-      models: models.length > 0 ? models : [{ id: '', name: '', supportsImage: false }],
+      models: models.length > 0 ? models : [{
+        id: '',
+        name: '',
+        supportsImage: false,
+        billingTier: 'tier_1',
+        billingTierName: '标准模型',
+        creditPerMinute: 1,
+        maxSessionSeconds: 1200,
+        toolPolicy: 'basic',
+      }],
     }
   }
 
@@ -141,7 +165,16 @@ function toFormValues(
     codingPlanEnabled: false,
     isDefault: false,
     defaultModelId: null,
-    models: [{ id: '', name: '', supportsImage: false }],
+    models: [{
+      id: '',
+      name: '',
+      supportsImage: false,
+      billingTier: 'tier_1',
+      billingTierName: '标准模型',
+      creditPerMinute: 1,
+      maxSessionSeconds: 1200,
+      toolPolicy: 'basic',
+    }],
   }
 }
 
@@ -281,8 +314,22 @@ export function ModelFormDialog({
             id: model.id,
             name: model.name,
             supportsImage: model.supportsImage,
+            billingTier: 'tier_1',
+            billingTierName: '标准模型',
+            creditPerMinute: 1,
+            maxSessionSeconds: 1200,
+            toolPolicy: 'basic',
           }))
-        : [{ id: '', name: '', supportsImage: false }]
+        : [{
+            id: '',
+            name: '',
+            supportsImage: false,
+            billingTier: 'tier_1',
+            billingTierName: '标准模型',
+            creditPerMinute: 1,
+            maxSessionSeconds: 1200,
+            toolPolicy: 'basic',
+          }]
     )
 
     form.setValue('defaultModelId', preset.models[0]?.id ?? null, { shouldDirty: true })
@@ -316,6 +363,11 @@ export function ModelFormDialog({
           id: model.id.trim(),
           name: model.name.trim(),
           supportsImage: model.supportsImage,
+          billingTier: model.billingTier.trim(),
+          billingTierName: model.billingTierName.trim(),
+          creditPerMinute: model.creditPerMinute,
+          maxSessionSeconds: model.maxSessionSeconds,
+          toolPolicy: model.toolPolicy.trim(),
         })),
         ...(!isEditing
           ? { apiKey: normalizedApiKey }
@@ -628,6 +680,58 @@ export function ModelFormDialog({
                             </Button>
                           </div>
                         </div>
+                        <div className="mt-4 grid gap-4 xl:grid-cols-5">
+                          <FormField control={form.control} name={`models.${index}.billingTier`} render={({ field: modelField }) => (
+                            <FormItem>
+                              <FormLabel>计费档位</FormLabel>
+                              <FormControl><Input {...modelField} placeholder="tier_1" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name={`models.${index}.billingTierName`} render={({ field: modelField }) => (
+                            <FormItem>
+                              <FormLabel>档位名称</FormLabel>
+                              <FormControl><Input {...modelField} placeholder="标准模型" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name={`models.${index}.creditPerMinute`} render={({ field: modelField }) => (
+                            <FormItem>
+                              <FormLabel>每分钟积分</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...modelField}
+                                  type="number"
+                                  min={1}
+                                  onChange={(event) => modelField.onChange(Number(event.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name={`models.${index}.maxSessionSeconds`} render={({ field: modelField }) => (
+                            <FormItem>
+                              <FormLabel>单次最长秒数</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...modelField}
+                                  type="number"
+                                  min={60}
+                                  step={60}
+                                  onChange={(event) => modelField.onChange(Number(event.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name={`models.${index}.toolPolicy`} render={({ field: modelField }) => (
+                            <FormItem>
+                              <FormLabel>工具策略</FormLabel>
+                              <FormControl><Input {...modelField} placeholder="basic / full / restricted" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        </div>
                       </div>
                     )
                   })}
@@ -635,7 +739,16 @@ export function ModelFormDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => append({ id: '', name: '', supportsImage: false })}
+                    onClick={() => append({
+                      id: '',
+                      name: '',
+                      supportsImage: false,
+                      billingTier: 'tier_1',
+                      billingTierName: '标准模型',
+                      creditPerMinute: 1,
+                      maxSessionSeconds: 1200,
+                      toolPolicy: 'basic',
+                    })}
                   >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     添加模型

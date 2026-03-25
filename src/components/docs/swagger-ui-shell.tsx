@@ -74,7 +74,7 @@ export function SwaggerUiShell() {
           <div className={styles.heroCard}>
             <h1 className={styles.title}>认证与对外 API 文档</h1>
             <p className={styles.subtitle}>
-              提供 refresh token 刷新，以及当前用户的模型配置、Skills、MCPs、用户信息与有效性校验接口。
+              提供 refresh token 刷新，以及当前用户的模型配置、配额、Claw 会话、Skills、MCPs、用户信息与有效性校验接口。
               外部资源接口支持 Bearer Token 鉴权，也兼容已登录后台的浏览器会话直接调试。
             </p>
             <div className={styles.metaRow}>
@@ -90,7 +90,8 @@ export function SwaggerUiShell() {
               access token 过期后先调用 <span className={styles.code}>/api/v1/auth/refresh</span> 刷新 token，
               再调用 <span className={styles.code}>/api/external/v1/me/validate</span> 校验 token，
               再调用 <span className={styles.code}>/api/external/v1/me</span>、<span className={styles.code}>/models</span>、
-              <span className={styles.code}>/skills</span>、<span className={styles.code}>/mcps</span> 获取当前用户资源。
+              <span className={styles.code}>/me/quota</span>、<span className={styles.code}>/claw/sessions/prepare</span>、
+              <span className={styles.code}>/skills</span>、<span className={styles.code}>/mcps</span> 获取当前用户资源并驱动 Claw 会话流程。
             </p>
           </div>
         </div>

@@ -15,6 +15,19 @@ interface User {
   departmentId?: string | null
   organization?: { id: string; name: string } | null
   department?: { id: string; name: string } | null
+  clawQuota?: {
+    isUnlimited: boolean
+    creditBalance: number
+    remainingClawSeconds: number | null
+    pricingVersion: string
+    expiresAt: string | null
+    updatedAt: string
+  } | null
+  usageSummary: {
+    consumedCredits: number
+    usedClawSeconds: number
+    sessions: number
+  }
 }
 
 interface Organization {

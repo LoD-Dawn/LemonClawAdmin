@@ -4,7 +4,7 @@ export function buildOpenApiDocument(origin?: string) {
     info: {
       title: 'Skills MCP API',
       version: '1.0.0',
-      description: '提供给外部系统使用的认证与当前用户资源接口，包括 token 刷新、用户信息、模型配置、Skills、MCPs 以及用户有效性校验。',
+      description: '提供给外部系统和桌面端使用的认证与当前用户资源接口，包括 token 刷新、用户信息、模型配置、配额查询、Claw 会话配额结算、Skills、MCPs 以及用户有效性校验。',
     },
     ...(origin
       ? {
@@ -143,15 +143,15 @@ export function buildOpenApiDocument(origin?: string) {
       '/api/external/v1/me/models': {
         get: {
           tags: ['External API'],
-          summary: '获取当前用户模型配置',
-          description: '返回当前用户在其组织范围、部门范围和个人范围下可用的最终模型配置。',
+          summary: '获取当前用户模型列表与计费信息',
+          description: '返回当前用户可选模型列表，以及每个模型对应的计费元数据、最大会话时长和工具策略。',
           security: [{ BearerAuth: [] }],
           responses: {
             '200': {
               description: '模型配置',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ModelConfigResponse' },
+                  schema: { $ref: '#/components/schemas/ModelCatalogResponse' },
                 },
               },
             },
@@ -168,6 +168,330 @@ export function buildOpenApiDocument(origin?: string) {
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/ErrorResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/external/v1/me/quota': {
+        get: {
+          tags: ['External API'],
+          summary: '获取当前用户配额快照',
+          description: '返回当前用户当前积分余额、剩余可用时长和计费版本。管理员角色会返回无限使用标记。',
+          security: [{ BearerAuth: [] }],
+          responses: {
+            '200': {
+              description: '当前用户配额',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/QuotaResponse' },
+                },
+              },
+            },
+            '401': {
+              description: '未认证或用户已失效',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '403': {
+              description: '缺少 quota:read scope',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/external/v1/claw/sessions/prepare': {
+        post: {
+          tags: ['External API'],
+          summary: '启动前申请 Claw 会话额度',
+          description: '创建会话预占记录，并返回服务端判定后的模型计费信息、允许时长和当前余额。',
+          security: [{ BearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/PrepareSessionRequest' },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: '申请成功',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PrepareSessionResponse' },
+                },
+              },
+            },
+            '400': {
+              description: '请求参数错误',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '401': {
+              description: '未认证或用户已失效',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '403': {
+              description: '缺少 claw:sessions:write scope',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '409': {
+              description: '模型不可用或额度不足',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/external/v1/claw/sessions/heartbeat': {
+        post: {
+          tags: ['External API'],
+          summary: '上报 Claw 会话活跃心跳',
+          description: '上报本周期新增活跃时长，由服务端计算本次是否允许继续使用，并返回服务端认可的累计活跃秒数。',
+          security: [{ BearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/HeartbeatRequest' },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: '心跳成功',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/HeartbeatResponse' },
+                },
+              },
+            },
+            '400': {
+              description: '请求参数错误',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '401': {
+              description: '未认证或用户已失效',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '403': {
+              description: '缺少 claw:sessions:write scope',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '404': {
+              description: 'reservationId 不存在',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '409': {
+              description: '会话已关闭或配额耗尽',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/external/v1/claw/sessions/finish': {
+        post: {
+          tags: ['External API'],
+          summary: '结束并结算 Claw 会话',
+          description: '关闭会话预占记录，执行最终结算，并返回最新余额。',
+          security: [{ BearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FinishSessionRequest' },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: '结算成功',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/FinishSessionResponse' },
+                },
+              },
+            },
+            '400': {
+              description: '请求参数错误',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '401': {
+              description: '未认证或用户已失效',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '403': {
+              description: '缺少 claw:sessions:write scope',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '404': {
+              description: 'reservationId 不存在',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/external/v1/claw/sessions/{reservationId}': {
+        get: {
+          tags: ['External API'],
+          summary: '查询单个 Claw 会话状态',
+          description: '用于异常恢复、断网恢复和避免重复结算。',
+          security: [{ BearerAuth: [] }],
+          parameters: [
+            {
+              name: 'reservationId',
+              in: 'path',
+              required: true,
+              description: 'prepare 返回的 reservationId',
+              schema: {
+                type: 'string',
+              },
+            },
+          ],
+          responses: {
+            '200': {
+              description: '会话状态',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ClawSessionStateResponse' },
+                },
+              },
+            },
+            '401': {
+              description: '未认证或用户已失效',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '403': {
+              description: '缺少 claw:sessions:write scope',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '404': {
+              description: 'reservationId 不存在',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/external/v1/me/usage-summary': {
+        get: {
+          tags: ['External API'],
+          summary: '获取当前用户使用汇总',
+          description: '按时间范围返回当前用户的累计积分消耗、累计活跃时长和会话次数。',
+          security: [{ BearerAuth: [] }],
+          parameters: [
+            {
+              name: 'range',
+              in: 'query',
+              description: '时间范围，当前支持类似 7d 的格式',
+              required: false,
+              schema: {
+                type: 'string',
+                default: '7d',
+                example: '7d',
+              },
+            },
+          ],
+          responses: {
+            '200': {
+              description: '使用汇总',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/UsageSummaryResponse' },
+                },
+              },
+            },
+            '400': {
+              description: 'range 参数不合法',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '401': {
+              description: '未认证或用户已失效',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
+                },
+              },
+            },
+            '403': {
+              description: '缺少 quota:read scope',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ExternalErrorResponse' },
                 },
               },
             },
@@ -298,6 +622,18 @@ export function buildOpenApiDocument(origin?: string) {
             },
           },
           required: ['error', 'code'],
+        },
+        ExternalErrorResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'QUOTA_NOT_ENOUGH' },
+            message: { type: 'string', example: '当前配额不足，无法启动 Claw' },
+            data: {
+              type: 'object',
+              additionalProperties: true,
+            },
+          },
+          required: ['code', 'message', 'data'],
         },
         RefreshTokenRequest: {
           type: 'object',
@@ -634,49 +970,337 @@ export function buildOpenApiDocument(origin?: string) {
           },
           required: ['data', 'pagination'],
         },
-        ModelEntry: {
+        ModelUsageMeta: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
-            name: { type: 'string' },
-            supportsImage: { type: 'boolean' },
+            billingTier: { type: 'string', example: 'tier_2' },
+            billingTierName: { type: 'string', example: '高级模型' },
+            creditPerMinute: { type: 'integer', example: 2 },
+            maxSessionSeconds: { type: 'integer', example: 1800 },
+            toolPolicy: { type: 'string', example: 'full' },
+            estimatedRemainingMinutes: { type: 'integer', example: 340 },
+            isUnlimited: { type: 'boolean' },
           },
-          required: ['id', 'name', 'supportsImage'],
+          required: [
+            'billingTier',
+            'billingTierName',
+            'creditPerMinute',
+            'maxSessionSeconds',
+            'toolPolicy',
+            'estimatedRemainingMinutes',
+          ],
         },
-        ModelProviderConfig: {
+        ModelCatalogItem: {
           type: 'object',
           properties: {
+            model: { type: 'string', example: 'claude-sonnet-4' },
+            displayName: { type: 'string', example: 'Claude Sonnet 4' },
             enabled: { type: 'boolean' },
-            apiKey: { type: 'string' },
-            baseUrl: { type: 'string' },
-            apiFormat: { type: 'string' },
-            codingPlanEnabled: { type: 'boolean' },
+            usageMeta: { $ref: '#/components/schemas/ModelUsageMeta' },
+          },
+          required: ['model', 'displayName', 'enabled', 'usageMeta'],
+        },
+        ModelCatalogProvider: {
+          type: 'object',
+          properties: {
+            provider: { type: 'string', example: 'anthropic' },
             models: {
               type: 'array',
-              items: { $ref: '#/components/schemas/ModelEntry' },
+              items: { $ref: '#/components/schemas/ModelCatalogItem' },
             },
           },
-          required: ['enabled', 'apiKey', 'baseUrl', 'apiFormat', 'codingPlanEnabled', 'models'],
+          required: ['provider', 'models'],
         },
-        ModelConfigResponse: {
+        ModelCatalogData: {
           type: 'object',
           properties: {
-            model: {
-              type: 'object',
-              properties: {
-                defaultModel: { type: 'string' },
-                defaultModelProvider: { type: 'string' },
-              },
-              required: ['defaultModel', 'defaultModelProvider'],
-            },
             providers: {
-              type: 'object',
-              additionalProperties: {
-                $ref: '#/components/schemas/ModelProviderConfig',
-              },
+              type: 'array',
+              items: { $ref: '#/components/schemas/ModelCatalogProvider' },
             },
+            updatedAt: { type: 'string', format: 'date-time' },
           },
-          required: ['model', 'providers'],
+          required: ['providers', 'updatedAt'],
+        },
+        ModelCatalogResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'OK' },
+            message: { type: 'string', example: '' },
+            data: { $ref: '#/components/schemas/ModelCatalogData' },
+          },
+          required: ['code', 'message', 'data'],
+        },
+        QuotaSnapshotData: {
+          type: 'object',
+          properties: {
+            userId: { type: 'string', format: 'uuid' },
+            isUnlimited: { type: 'boolean' },
+            creditBalance: {
+              anyOf: [
+                { type: 'integer', minimum: 0 },
+                { type: 'null' },
+              ],
+            },
+            remainingClawSeconds: {
+              anyOf: [
+                { type: 'integer', minimum: 0 },
+                { type: 'null' },
+              ],
+            },
+            pricingVersion: { type: 'string', example: '2026-03-v2' },
+            expiresAt: {
+              anyOf: [
+                { type: 'string', format: 'date-time' },
+                { type: 'null' },
+              ],
+            },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+          required: ['userId', 'isUnlimited', 'creditBalance', 'remainingClawSeconds', 'pricingVersion', 'expiresAt', 'updatedAt'],
+        },
+        QuotaResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'OK' },
+            message: { type: 'string', example: '' },
+            data: { $ref: '#/components/schemas/QuotaSnapshotData' },
+          },
+          required: ['code', 'message', 'data'],
+        },
+        PrepareSessionRequest: {
+          type: 'object',
+          properties: {
+            clientSessionId: { type: 'string', example: 'cowork_abc123' },
+            provider: { type: 'string', example: 'anthropic' },
+            model: { type: 'string', example: 'claude-sonnet-4' },
+            entry: { type: 'string', enum: ['cowork_start', 'cowork_continue'] },
+            workspacePath: {
+              anyOf: [
+                { type: 'string', example: 'D:\\project\\demo' },
+                { type: 'null' },
+              ],
+            },
+            estimatedSeconds: {
+              anyOf: [
+                { type: 'integer', minimum: 1, example: 900 },
+                { type: 'null' },
+              ],
+            },
+            idempotencyKey: { type: 'string', example: 'prepare_cowork_abc123_1' },
+          },
+          required: ['clientSessionId', 'provider', 'model', 'entry', 'idempotencyKey'],
+        },
+        PrepareSessionData: {
+          type: 'object',
+          properties: {
+            allowed: { type: 'boolean' },
+            reservationId: { type: 'string', example: 'rsv_xxx' },
+            clientSessionId: { type: 'string' },
+            provider: { type: 'string' },
+            model: { type: 'string' },
+            billingTier: { type: 'string' },
+            billingTierName: { type: 'string' },
+            creditPerMinute: { type: 'integer' },
+            maxSessionSeconds: { type: 'integer' },
+            toolPolicy: { type: 'string' },
+            grantedSeconds: { type: 'integer' },
+            creditBalance: {
+              anyOf: [
+                { type: 'integer', minimum: 0 },
+                { type: 'null' },
+              ],
+            },
+            remainingClawSeconds: {
+              anyOf: [
+                { type: 'integer', minimum: 0 },
+                { type: 'null' },
+              ],
+            },
+            pricingVersion: { type: 'string' },
+            isUnlimited: { type: 'boolean' },
+          },
+          required: [
+            'allowed',
+            'reservationId',
+            'clientSessionId',
+            'provider',
+            'model',
+            'billingTier',
+            'billingTierName',
+            'creditPerMinute',
+            'maxSessionSeconds',
+            'toolPolicy',
+            'grantedSeconds',
+            'creditBalance',
+            'remainingClawSeconds',
+            'pricingVersion',
+          ],
+        },
+        PrepareSessionResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'OK' },
+            message: { type: 'string', example: '' },
+            data: { $ref: '#/components/schemas/PrepareSessionData' },
+          },
+          required: ['code', 'message', 'data'],
+        },
+        HeartbeatRequest: {
+          type: 'object',
+          properties: {
+            reservationId: { type: 'string' },
+            clientSessionId: { type: 'string' },
+            activeSecondsDelta: { type: 'integer', minimum: 0, example: 30 },
+            totalActiveSeconds: { type: 'integer', minimum: 0, example: 150 },
+            status: { type: 'string', enum: ['running', 'paused', 'waiting_user'] },
+            sentAt: {
+              anyOf: [
+                { type: 'string', format: 'date-time' },
+                { type: 'null' },
+              ],
+            },
+            idempotencyKey: { type: 'string', example: 'heartbeat_rsv_xxx_5' },
+          },
+          required: ['reservationId', 'clientSessionId', 'activeSecondsDelta', 'totalActiveSeconds', 'status', 'idempotencyKey'],
+        },
+        HeartbeatData: {
+          type: 'object',
+          properties: {
+            allowed: { type: 'boolean' },
+            reservationId: { type: 'string' },
+            serverAcceptedTotalActiveSeconds: { type: 'integer' },
+            creditBalance: {
+              anyOf: [
+                { type: 'integer', minimum: 0 },
+                { type: 'null' },
+              ],
+            },
+            remainingClawSeconds: {
+              anyOf: [
+                { type: 'integer', minimum: 0 },
+                { type: 'null' },
+              ],
+            },
+            shouldStop: { type: 'boolean' },
+            isUnlimited: { type: 'boolean' },
+          },
+          required: ['allowed', 'reservationId', 'creditBalance', 'remainingClawSeconds', 'shouldStop'],
+        },
+        HeartbeatResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'OK' },
+            message: { type: 'string', example: '' },
+            data: { $ref: '#/components/schemas/HeartbeatData' },
+          },
+          required: ['code', 'message', 'data'],
+        },
+        FinishSessionRequest: {
+          type: 'object',
+          properties: {
+            reservationId: { type: 'string' },
+            clientSessionId: { type: 'string' },
+            totalActiveSeconds: { type: 'integer', minimum: 0, example: 188 },
+            finishReason: {
+              type: 'string',
+              enum: ['completed', 'stopped_by_user', 'error', 'quota_exhausted', 'auth_invalid', 'network_lost'],
+            },
+            lastErrorCode: {
+              anyOf: [
+                { type: 'string' },
+                { type: 'null' },
+              ],
+            },
+            idempotencyKey: { type: 'string', example: 'finish_rsv_xxx' },
+          },
+          required: ['reservationId', 'clientSessionId', 'totalActiveSeconds', 'finishReason', 'idempotencyKey'],
+        },
+        FinishSessionData: {
+          type: 'object',
+          properties: {
+            reservationId: { type: 'string' },
+            provider: { type: 'string' },
+            model: { type: 'string' },
+            billingTier: { type: 'string' },
+            finalConsumedCredits: { type: 'integer', minimum: 0 },
+            finalActiveSeconds: { type: 'integer', minimum: 0 },
+            creditBalance: {
+              anyOf: [
+                { type: 'integer', minimum: 0 },
+                { type: 'null' },
+              ],
+            },
+            remainingClawSeconds: {
+              anyOf: [
+                { type: 'integer', minimum: 0 },
+                { type: 'null' },
+              ],
+            },
+            closed: { type: 'boolean' },
+            isUnlimited: { type: 'boolean' },
+          },
+          required: [
+            'reservationId',
+            'provider',
+            'model',
+            'billingTier',
+            'finalConsumedCredits',
+            'finalActiveSeconds',
+            'creditBalance',
+            'remainingClawSeconds',
+            'closed',
+          ],
+        },
+        FinishSessionResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'OK' },
+            message: { type: 'string', example: '' },
+            data: { $ref: '#/components/schemas/FinishSessionData' },
+          },
+          required: ['code', 'message', 'data'],
+        },
+        ClawSessionStateData: {
+          type: 'object',
+          properties: {
+            reservationId: { type: 'string' },
+            status: { type: 'string', example: 'running' },
+            clientSessionId: { type: 'string' },
+            provider: { type: 'string' },
+            model: { type: 'string' },
+            serverAcceptedTotalActiveSeconds: { type: 'integer', minimum: 0 },
+            closed: { type: 'boolean' },
+          },
+          required: ['reservationId', 'status', 'clientSessionId', 'provider', 'model', 'serverAcceptedTotalActiveSeconds', 'closed'],
+        },
+        ClawSessionStateResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'OK' },
+            message: { type: 'string', example: '' },
+            data: { $ref: '#/components/schemas/ClawSessionStateData' },
+          },
+          required: ['code', 'message', 'data'],
+        },
+        UsageSummaryData: {
+          type: 'object',
+          properties: {
+            range: { type: 'string', example: '7d' },
+            consumedCredits: { type: 'integer', minimum: 0 },
+            usedClawSeconds: { type: 'integer', minimum: 0 },
+            sessions: { type: 'integer', minimum: 0 },
+          },
+          required: ['range', 'consumedCredits', 'usedClawSeconds', 'sessions'],
+        },
+        UsageSummaryResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'OK' },
+            message: { type: 'string', example: '' },
+            data: { $ref: '#/components/schemas/UsageSummaryData' },
+          },
+          required: ['code', 'message', 'data'],
         },
       },
     },

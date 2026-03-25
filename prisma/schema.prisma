@@ -84,6 +84,9 @@ model User {
   issuedResourceGrants    ResourceGrant[]       @relation("ResourceGrantIssuer")
   operationLogs           OperationLog[]        @relation("OperationLogActor")
   targetedOperationLogs   OperationLog[]        @relation("OperationLogTargetUser")
+  clawQuota               UserClawQuota?
+  clawSessionReservations ClawSessionReservation[]
+  externalApiIdempotencyRecords ExternalApiIdempotency[]
 
   @@map("users")
 }
@@ -265,6 +268,11 @@ model AiModel {
   modelId       String   @map("model_id")
   name          String
   supportsImage Boolean  @default(false) @map("supports_image")
+  billingTier   String   @default("tier_1") @map("billing_tier")
+  billingTierName String @default("标准模型") @map("billing_tier_name")
+  creditPerMinute Int    @default(1) @map("credit_per_minute")
+  maxSessionSeconds Int  @default(1200) @map("max_session_seconds")
+  toolPolicy    String   @default("basic") @map("tool_policy")
   isActive      Boolean  @default(true) @map("is_active")
   sortOrder     Int      @default(0) @map("sort_order")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -275,6 +283,78 @@ model AiModel {
   @@unique([providerId, modelId])
   @@index([providerId, isActive, sortOrder])
   @@map("ai_models")
+}
+
+model UserClawQuota {
+  userId         String   @id @map("user_id")
+  creditBalance  Int      @default(0) @map("credit_balance")
+  pricingVersion String   @default("2026-03-v2") @map("pricing_version")
+  expiresAt      DateTime? @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_claw_quotas")
+}
+
+model ClawSessionReservation {
+  id                             String   @id
+  userId                         String   @map("user_id")
+  clientSessionId                String   @map("client_session_id")
+  provider                       String
+  model                          String
+  entry                          String
+  workspacePath                  String?  @map("workspace_path")
+  estimatedSeconds               Int?     @map("estimated_seconds")
+  billingTier                    String   @map("billing_tier")
+  billingTierName                String   @map("billing_tier_name")
+  creditPerMinute                Int      @map("credit_per_minute")
+  maxSessionSeconds              Int      @map("max_session_seconds")
+  toolPolicy                     String   @map("tool_policy")
+  grantedSeconds                 Int      @map("granted_seconds")
+  serverAcceptedTotalActiveSeconds Int    @default(0) @map("server_accepted_total_active_seconds")
+  chargedCredits                 Int      @default(0) @map("charged_credits")
+  finalConsumedCredits           Int      @default(0) @map("final_consumed_credits")
+  status                         String   @default("prepared")
+  closed                         Boolean  @default(false)
+  finishReason                   String?  @map("finish_reason")
+  lastErrorCode                  String?  @map("last_error_code")
+  lastClientStatus               String?  @map("last_client_status")
+  lastHeartbeatAt                DateTime? @map("last_heartbeat_at")
+  closedAt                       DateTime? @map("closed_at")
+  createdAt                      DateTime @default(now()) @map("created_at")
+  updatedAt                      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyRecords ExternalApiIdempotency[]
+
+  @@index([userId, createdAt])
+  @@index([userId, clientSessionId])
+  @@index([closed, updatedAt])
+  @@map("claw_session_reservations")
+}
+
+model ExternalApiIdempotency {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  scope              String
+  idempotencyKey     String   @map("idempotency_key")
+  requestFingerprint String   @map("request_fingerprint")
+  responseCode       String   @map("response_code")
+  responseMessage    String   @default("") @map("response_message")
+  responseDataJson   String   @map("response_data_json")
+  statusCode         Int      @default(200) @map("status_code")
+  reservationId      String?  @map("reservation_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservation ClawSessionReservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, scope, idempotencyKey])
+  @@index([reservationId])
+  @@map("external_api_idempotency")
 }
 
 model OAuthClient {

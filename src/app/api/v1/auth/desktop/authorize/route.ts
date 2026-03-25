@@ -6,7 +6,7 @@ import { ensureDesktopOAuthClient, matchesAllowedRedirectUri } from '@/lib/oauth
 import { ACCESS_TOKEN_EXPIRY, createAccessToken, createRefreshToken } from '@/lib/oauth'
 import { recordOperationLog } from '@/lib/operation-log'
 
-const DEFAULT_DESKTOP_SCOPE = 'skills:read mcps:read models:read'
+const DEFAULT_DESKTOP_SCOPE = 'skills:read mcps:read models:read quota:read claw:sessions:write'
 
 export async function POST(request: NextRequest) {
   const session = await auth()

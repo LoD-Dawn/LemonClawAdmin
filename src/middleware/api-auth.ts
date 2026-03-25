@@ -3,6 +3,29 @@ import { hasRequiredScopes, normalizeScopes, verifyAccessToken } from '@/lib/oau
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 
+function buildAuthErrorResponse(
+  request: NextRequest,
+  status: number,
+  code: string,
+  message: string
+) {
+  if (request.nextUrl.pathname.startsWith('/api/external/v1/')) {
+    return NextResponse.json(
+      {
+        code,
+        message,
+        data: {},
+      },
+      { status }
+    )
+  }
+
+  return NextResponse.json(
+    { error: message, code },
+    { status }
+  )
+}
+
 export async function requireApiAuth(
   request: NextRequest,
   options?: { requiredScopes?: string[] }
@@ -40,31 +63,24 @@ export async function requireApiAuth(
       tokenRecord.userId !== payload.userId ||
       tokenRecord.clientId !== payload.clientId
     ) {
-      return NextResponse.json(
-        { error: 'Invalid token', code: 'AUTH_INVALID_TOKEN' },
-        { status: 401 }
-      )
+      return buildAuthErrorResponse(request, 401, 'AUTH_INVALID', 'Invalid token')
     }
 
     if (
       options?.requiredScopes?.length &&
       !hasRequiredScopes(tokenRecord.scope, options.requiredScopes)
     ) {
-      return NextResponse.json(
-        {
-          error: `Missing required scopes: ${options.requiredScopes.join(', ')}`,
-          code: 'FORBIDDEN_RESOURCE_SCOPE_REQUIRED',
-        },
-        { status: 403 }
+      return buildAuthErrorResponse(
+        request,
+        403,
+        'UNAUTHORIZED',
+        `Missing required scopes: ${options.requiredScopes.join(', ')}`
       )
     }
 
     const user = tokenRecord.user
     if (!user || !user.isActive) {
-      return NextResponse.json(
-        { error: 'User not found or inactive', code: 'AUTH_USER_INACTIVE' },
-        { status: 401 }
-      )
+      return buildAuthErrorResponse(request, 401, 'AUTH_INVALID', 'User not found or inactive')
     }
 
     return {
@@ -83,10 +99,7 @@ export async function requireApiAuth(
   // Fallback to NextAuth session
   const session = await auth()
   if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized', code: 'AUTH_MISSING_TOKEN' },
-      { status: 401 }
-    )
+    return buildAuthErrorResponse(request, 401, 'UNAUTHORIZED', 'Unauthorized')
   }
 
   const user = await db.user.findUnique({
@@ -95,10 +108,7 @@ export async function requireApiAuth(
   })
 
   if (!user || !user.isActive) {
-    return NextResponse.json(
-      { error: 'User not found or inactive', code: 'AUTH_USER_INACTIVE' },
-      { status: 401 }
-    )
+    return buildAuthErrorResponse(request, 401, 'AUTH_INVALID', 'User not found or inactive')
   }
 
   return {

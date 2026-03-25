@@ -22,7 +22,7 @@ async function main() {
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
   const passwordHash = await bcrypt.hash(adminPassword, 12)
 
-  await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {},
     create: {
@@ -32,6 +32,16 @@ async function main() {
       organizationId: org.id,
       isSuperAdmin: true,
       isActive: true,
+    },
+  })
+
+  await prisma.userClawQuota.upsert({
+    where: { userId: adminUser.id },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      creditBalance: 680,
+      pricingVersion: '2026-03-v2',
     },
   })
 

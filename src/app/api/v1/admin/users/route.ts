@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/middleware/admin-only'
 import { db } from '@/lib/db'
+import { fetchAdminUsersPage, fetchAdminUserById } from '@/lib/admin-user-quota'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import {
@@ -17,7 +18,10 @@ const createSchema = z.object({
   isSuperAdmin: z.boolean().optional(),
   isDepartmentAdmin: z.boolean().optional(),
   departmentId: z.string().uuid().nullable().optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  creditBalance: z.number().int().min(0).optional(),
+  pricingVersion: z.string().trim().min(1).max(64).optional(),
+  quotaExpiresAt: z.string().datetime().nullable().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -29,41 +33,8 @@ export async function GET(request: NextRequest) {
   const pageSize = parseInt(searchParams.get('pageSize') || '10')
   const search = searchParams.get('search') || ''
 
-  const where = {
-    ...(search && {
-      OR: [
-        { name: { contains: search, mode: 'insensitive' as const } },
-        { email: { contains: search, mode: 'insensitive' as const } },
-      ],
-    }),
-  }
-
-  const [users, total] = await Promise.all([
-    db.user.findMany({
-      where,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true, email: true, name: true,
-        organizationId: true, isSuperAdmin: true, isDepartmentAdmin: true, departmentId: true, isActive: true,
-        organization: { select: { id: true, name: true } },
-        department: { select: { id: true, name: true } },
-        createdAt: true
-      }
-    }),
-    db.user.count({ where })
-  ])
-
-  return NextResponse.json({
-    data: users,
-    pagination: {
-      page,
-      pageSize,
-      pageCount: Math.ceil(total / pageSize),
-      total
-    }
-  })
+  const result = await fetchAdminUsersPage({ page, pageSize, search })
+  return NextResponse.json(result)
 }
 
 export async function POST(request: NextRequest) {
@@ -80,12 +51,13 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { password, ...userData } = parsed.data
+  const { password, creditBalance, pricingVersion, quotaExpiresAt, ...userData } = parsed.data
   const passwordHash = await bcrypt.hash(password, 12)
   const normalizedData = {
     ...userData,
     ...normalizeUserPermissionInput(userData),
   }
+  const isUnlimitedUser = normalizedData.isSuperAdmin || normalizedData.isDepartmentAdmin
 
   const [organization, department] = await Promise.all([
     normalizedData.organizationId
@@ -116,16 +88,30 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const user = await db.user.create({
-      data: { ...normalizedData, passwordHash },
-      select: {
-        id: true, email: true, name: true, organizationId: true,
-        isSuperAdmin: true, isDepartmentAdmin: true, departmentId: true, isActive: true,
-        organization: { select: { id: true, name: true } },
-        department: { select: { id: true, name: true } },
-        createdAt: true
+    const createdUser = await db.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { ...normalizedData, passwordHash },
+        select: { id: true },
+      })
+
+      if (!isUnlimitedUser) {
+        await tx.userClawQuota.create({
+          data: {
+            userId: user.id,
+            creditBalance: creditBalance ?? 0,
+            pricingVersion: pricingVersion ?? '2026-03-v2',
+            expiresAt: quotaExpiresAt ? new Date(quotaExpiresAt) : null,
+          },
+        })
       }
+
+      return user
     })
+
+    const user = await fetchAdminUserById(createdUser.id)
+    if (!user) {
+      throw new Error('Created user not found')
+    }
 
     await recordOperationLog({
       request,
@@ -145,6 +131,10 @@ export async function POST(request: NextRequest) {
         isDepartmentAdmin: user.isDepartmentAdmin,
         departmentId: user.departmentId,
         isActive: user.isActive,
+        isUnlimited: user.clawQuota?.isUnlimited ?? false,
+        creditBalance: user.clawQuota?.creditBalance ?? 0,
+        pricingVersion: user.clawQuota?.pricingVersion ?? null,
+        quotaExpiresAt: user.clawQuota?.expiresAt ?? null,
       },
     })
 

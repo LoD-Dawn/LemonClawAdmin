@@ -28,6 +28,19 @@ type User = {
   departmentId?: string | null
   organization?: { id: string; name: string } | null
   department?: { id: string; name: string } | null
+  clawQuota?: {
+    isUnlimited: boolean
+    creditBalance: number
+    remainingClawSeconds: number | null
+    pricingVersion: string
+    expiresAt: string | null
+    updatedAt: string
+  } | null
+  usageSummary: {
+    consumedCredits: number
+    usedClawSeconds: number
+    sessions: number
+  }
 }
 
 type PaginationInfo = {
@@ -35,6 +48,25 @@ type PaginationInfo = {
   pageSize: number
   pageCount: number
   total: number
+}
+
+function formatClawDuration(seconds: number) {
+  if (seconds <= 0) {
+    return '0 分钟'
+  }
+
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+
+  if (hours <= 0) {
+    return `${minutes} 分钟`
+  }
+
+  if (minutes <= 0) {
+    return `${hours} 小时`
+  }
+
+  return `${hours} 小时 ${minutes} 分钟`
 }
 
 export function UsersTable({
@@ -89,6 +121,46 @@ export function UsersTable({
       accessorKey: 'department.name',
       header: '管理范围',
       cell: ({ row }) => row.original.department?.name || '-',
+    },
+    {
+      accessorKey: 'clawQuota.creditBalance',
+      header: '积分配额',
+      cell: ({ row }) => {
+        const quota = row.original.clawQuota
+
+        if (quota?.isUnlimited || row.original.isSuperAdmin || row.original.isDepartmentAdmin) {
+          return (
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-900">无限使用</div>
+              <div className="text-xs text-slate-500">管理员角色不受积分配额限制</div>
+            </div>
+          )
+        }
+
+        if (!quota) {
+          return <span className="text-sm text-slate-400">未配置</span>
+        }
+
+        return (
+          <div className="space-y-1">
+            <div className="font-semibold text-slate-900">{quota.creditBalance} 积分</div>
+            <div className="text-xs text-slate-500">剩余约 {formatClawDuration(quota.remainingClawSeconds ?? 0)}</div>
+            <div className="text-[11px] text-slate-400">{quota.pricingVersion}</div>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: 'usageSummary.consumedCredits',
+      header: '使用情况',
+      cell: ({ row }) => (
+        <div className="space-y-1">
+          <div className="font-medium text-slate-800">已用 {row.original.usageSummary.consumedCredits} 积分</div>
+          <div className="text-xs text-slate-500">
+            {formatClawDuration(row.original.usageSummary.usedClawSeconds)} · {row.original.usageSummary.sessions} 次会话
+          </div>
+        </div>
+      ),
     },
     {
       accessorKey: 'isSuperAdmin',
@@ -205,7 +277,7 @@ export function UsersTable({
       <div className="admin-surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="space-y-2">
           <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">账号列表</div>
-          <p className="text-sm leading-6 text-slate-600">支持创建、编辑、启用、禁用与删除用户，并统一维护组织归属和权限角色。</p>
+          <p className="text-sm leading-6 text-slate-600">支持创建、编辑、启用、禁用与删除用户，并统一维护组织归属、积分配额和累计使用情况。</p>
         </div>
         <UserFormDialog organizations={organizations} onSuccess={onRefresh} />
       </div>

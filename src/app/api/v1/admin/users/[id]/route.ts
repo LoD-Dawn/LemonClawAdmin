@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { requireAdmin } from '@/middleware/admin-only'
 import { db } from '@/lib/db'
+import { fetchAdminUserById } from '@/lib/admin-user-quota'
 import { z } from 'zod'
 import { revokeActiveGrants } from '@/lib/resource-grants'
 import {
@@ -20,7 +21,10 @@ const updateSchema = z.object({
   isSuperAdmin: z.boolean().optional(),
   isDepartmentAdmin: z.boolean().optional(),
   departmentId: z.string().uuid().nullable().optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  creditBalance: z.number().int().min(0).optional(),
+  pricingVersion: z.string().trim().min(1).max(64).optional(),
+  quotaExpiresAt: z.string().datetime().nullable().optional(),
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -28,15 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (authResult instanceof NextResponse) return authResult
 
   const { id } = await params
-  const user = await db.user.findUnique({
-    where: { id },
-    select: {
-      id: true, email: true, name: true, organizationId: true,
-      isSuperAdmin: true, isDepartmentAdmin: true, departmentId: true, isActive: true, createdAt: true, updatedAt: true,
-      organization: { select: { id: true, name: true } },
-      department: { select: { id: true, name: true } },
-    }
-  })
+  const user = await fetchAdminUserById(id)
 
   if (!user) {
     return NextResponse.json(
@@ -92,6 +88,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const updateData: Record<string, unknown> = { ...parsed.data }
+  const quotaPatch = {
+    creditBalance: parsed.data.creditBalance,
+    pricingVersion: parsed.data.pricingVersion,
+    quotaExpiresAt: parsed.data.quotaExpiresAt,
+  }
+  delete updateData.creditBalance
+  delete updateData.pricingVersion
+  delete updateData.quotaExpiresAt
   if (updateData.password) {
     const bcryptModule = await import('bcryptjs')
     updateData.passwordHash = await bcryptModule.hash(updateData.password as string, 12)
@@ -100,23 +104,24 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   const hasPermissionFieldUpdate = ['organizationId', 'isSuperAdmin', 'isDepartmentAdmin', 'departmentId']
     .some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key))
+  const nextPermissionState = hasPermissionFieldUpdate
+    ? normalizeUserPermissionInput({
+        organizationId: Object.prototype.hasOwnProperty.call(parsed.data, 'organizationId')
+          ? parsed.data.organizationId
+          : existingUser.organizationId,
+        isSuperAdmin: Object.prototype.hasOwnProperty.call(parsed.data, 'isSuperAdmin')
+          ? parsed.data.isSuperAdmin
+          : existingUser.isSuperAdmin,
+        isDepartmentAdmin: Object.prototype.hasOwnProperty.call(parsed.data, 'isDepartmentAdmin')
+          ? parsed.data.isDepartmentAdmin
+          : existingUser.isDepartmentAdmin,
+        departmentId: Object.prototype.hasOwnProperty.call(parsed.data, 'departmentId')
+          ? parsed.data.departmentId
+          : existingUser.departmentId,
+      })
+    : normalizeUserPermissionInput(existingUser)
 
   if (hasPermissionFieldUpdate) {
-    const nextPermissionState = normalizeUserPermissionInput({
-      organizationId: Object.prototype.hasOwnProperty.call(parsed.data, 'organizationId')
-        ? parsed.data.organizationId
-        : existingUser.organizationId,
-      isSuperAdmin: Object.prototype.hasOwnProperty.call(parsed.data, 'isSuperAdmin')
-        ? parsed.data.isSuperAdmin
-        : existingUser.isSuperAdmin,
-      isDepartmentAdmin: Object.prototype.hasOwnProperty.call(parsed.data, 'isDepartmentAdmin')
-        ? parsed.data.isDepartmentAdmin
-        : existingUser.isDepartmentAdmin,
-      departmentId: Object.prototype.hasOwnProperty.call(parsed.data, 'departmentId')
-        ? parsed.data.departmentId
-        : existingUser.departmentId,
-    })
-
     const [organization, department] = await Promise.all([
       nextPermissionState.organizationId
         ? db.organization.findUnique({
@@ -148,17 +153,38 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     updateData.departmentId = nextPermissionState.departmentId
   }
 
-  const user = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const updatedUser = await tx.user.update({
+  await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.user.update({
       where: { id },
       data: updateData,
-      select: {
-        id: true, email: true, name: true, organizationId: true,
-        isSuperAdmin: true, isDepartmentAdmin: true, departmentId: true, isActive: true, createdAt: true, updatedAt: true,
-        organization: { select: { id: true, name: true } },
-        department: { select: { id: true, name: true } },
-      }
     })
+
+    const hasQuotaUpdate = ['creditBalance', 'pricingVersion', 'quotaExpiresAt']
+      .some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key))
+    const isUnlimitedUser = nextPermissionState.isSuperAdmin || nextPermissionState.isDepartmentAdmin
+
+    if (hasQuotaUpdate && !isUnlimitedUser) {
+      await tx.userClawQuota.upsert({
+        where: { userId: id },
+        update: {
+          ...(Object.prototype.hasOwnProperty.call(parsed.data, 'creditBalance')
+            ? { creditBalance: quotaPatch.creditBalance ?? 0 }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(parsed.data, 'pricingVersion')
+            ? { pricingVersion: quotaPatch.pricingVersion ?? '2026-03-v2' }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(parsed.data, 'quotaExpiresAt')
+            ? { expiresAt: quotaPatch.quotaExpiresAt ? new Date(quotaPatch.quotaExpiresAt) : null }
+            : {}),
+        },
+        create: {
+          userId: id,
+          creditBalance: quotaPatch.creditBalance ?? 0,
+          pricingVersion: quotaPatch.pricingVersion ?? '2026-03-v2',
+          expiresAt: quotaPatch.quotaExpiresAt ? new Date(quotaPatch.quotaExpiresAt) : null,
+        },
+      })
+    }
 
     if (updateData.isActive === false) {
       const revokedAt = new Date()
@@ -170,8 +196,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       await tx.oAuthToken.deleteMany({ where: { userId: id } })
     }
 
-    return updatedUser
   })
+
+  const user = await fetchAdminUserById(id)
+  if (!user) {
+    return NextResponse.json(
+      { error: 'User not found', code: 'NOT_FOUND_USER' },
+      { status: 404 }
+    )
+  }
 
   await recordOperationLog({
     request,
@@ -193,6 +226,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       isActive: user.isActive,
       updatedFields: Object.keys(parsed.data).filter((key) => key !== 'password'),
       passwordChanged: Boolean(parsed.data.password),
+      isUnlimited: user.clawQuota?.isUnlimited ?? false,
+      creditBalance: user.clawQuota?.creditBalance ?? null,
+      pricingVersion: user.clawQuota?.pricingVersion ?? null,
+      quotaExpiresAt: user.clawQuota?.expiresAt ?? null,
     },
   })
 

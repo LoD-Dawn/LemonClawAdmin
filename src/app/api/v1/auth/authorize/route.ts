@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const clientId = searchParams.get('client_id')
   const redirectUri = searchParams.get('redirect_uri')
   const state = searchParams.get('state')
-  const scope = searchParams.get('scope') || 'skills:read mcps:read models:read'
+  const scope = searchParams.get('scope') || 'skills:read mcps:read models:read quota:read claw:sessions:write'
 
   if (!clientId || !redirectUri) {
     return NextResponse.json(

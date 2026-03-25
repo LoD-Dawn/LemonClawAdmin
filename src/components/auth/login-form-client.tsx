@@ -29,7 +29,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
     client_id: searchParams.get('client_id') || '',
     redirect_uri: searchParams.get('redirect_uri') || '',
     state: searchParams.get('state') || '',
-    scope: searchParams.get('scope') || 'skills:read mcps:read models:read'
+    scope: searchParams.get('scope') || 'skills:read mcps:read models:read quota:read claw:sessions:write'
   }
 
   const hasRedirectUri = !!oauth.redirect_uri

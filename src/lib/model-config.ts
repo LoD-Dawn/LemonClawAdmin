@@ -9,6 +9,11 @@ export const modelEntrySchema = z.object({
   id: z.string().trim().regex(modelItemIdPattern, 'Invalid model id format'),
   name: z.string().trim().min(1).max(255),
   supportsImage: z.boolean().default(false),
+  billingTier: z.string().trim().min(1).max(64).default('tier_1'),
+  billingTierName: z.string().trim().min(1).max(64).default('标准模型'),
+  creditPerMinute: z.number().int().min(1).max(100000).default(1),
+  maxSessionSeconds: z.number().int().min(60).max(86400).default(1200),
+  toolPolicy: z.string().trim().min(1).max(64).default('basic'),
 })
 
 const modelProviderBaseSchema = z.object({
@@ -120,6 +125,11 @@ type ProviderWithModels = {
     modelId: string
     name: string
     supportsImage: boolean
+    billingTier: string
+    billingTierName: string
+    creditPerMinute: number
+    maxSessionSeconds: number
+    toolPolicy: string
     sortOrder: number
     isActive: boolean
   }>
@@ -134,12 +144,22 @@ export function normalizeModelEntries(models: ModelEntryInput[]): Array<{
   modelId: string
   name: string
   supportsImage: boolean
+  billingTier: string
+  billingTierName: string
+  creditPerMinute: number
+  maxSessionSeconds: number
+  toolPolicy: string
   sortOrder: number
 }> {
   return models.map((model, index) => ({
     modelId: model.id.trim(),
     name: model.name.trim(),
     supportsImage: model.supportsImage,
+    billingTier: model.billingTier.trim(),
+    billingTierName: model.billingTierName.trim(),
+    creditPerMinute: model.creditPerMinute,
+    maxSessionSeconds: model.maxSessionSeconds,
+    toolPolicy: model.toolPolicy.trim(),
     sortOrder: index,
   }))
 }

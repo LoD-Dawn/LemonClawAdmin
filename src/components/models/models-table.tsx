@@ -21,6 +21,11 @@ interface ModelItemRow {
   modelId: string
   name: string
   supportsImage: boolean
+  billingTier: string
+  billingTierName: string
+  creditPerMinute: number
+  maxSessionSeconds: number
+  toolPolicy: string
 }
 
 interface ModelProviderRow {
