@@ -107,7 +107,7 @@ export function buildOpenApiDocument(origin?: string) {
               description: '未认证或用户已失效',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                  schema: { $ref: '#/components/schemas/LegacyCompatibleExternalErrorResponse' },
                 },
               },
             },
@@ -133,7 +133,7 @@ export function buildOpenApiDocument(origin?: string) {
               description: '认证失败或用户已失效',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                  schema: { $ref: '#/components/schemas/LegacyCompatibleExternalErrorResponse' },
                 },
               },
             },
@@ -144,14 +144,14 @@ export function buildOpenApiDocument(origin?: string) {
         get: {
           tags: ['External API'],
           summary: '获取当前用户模型列表与计费信息',
-          description: '返回当前用户可选模型列表，以及每个模型对应的计费元数据、最大会话时长和工具策略。',
+          description: '返回当前用户可选模型列表，以及每个模型对应的计费元数据、最大会话时长和工具策略。响应会把旧模型配置字段与新目录字段合并到同一份 data 中，避免重复结构。',
           security: [{ BearerAuth: [] }],
           responses: {
             '200': {
               description: '模型配置',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ModelCatalogResponse' },
+                  schema: { $ref: '#/components/schemas/MergedModelCatalogResponse' },
                 },
               },
             },
@@ -159,7 +159,7 @@ export function buildOpenApiDocument(origin?: string) {
               description: '未认证或用户已失效',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                  schema: { $ref: '#/components/schemas/LegacyCompatibleExternalErrorResponse' },
                 },
               },
             },
@@ -167,7 +167,7 @@ export function buildOpenApiDocument(origin?: string) {
               description: '缺少 models:read scope',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                  schema: { $ref: '#/components/schemas/LegacyCompatibleExternalErrorResponse' },
                 },
               },
             },
@@ -521,7 +521,7 @@ export function buildOpenApiDocument(origin?: string) {
               description: '未认证或用户已失效',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                  schema: { $ref: '#/components/schemas/LegacyCompatibleExternalErrorResponse' },
                 },
               },
             },
@@ -529,7 +529,7 @@ export function buildOpenApiDocument(origin?: string) {
               description: '缺少 skills:read scope',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                  schema: { $ref: '#/components/schemas/LegacyCompatibleExternalErrorResponse' },
                 },
               },
             },
@@ -559,7 +559,7 @@ export function buildOpenApiDocument(origin?: string) {
               description: '未认证或用户已失效',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                  schema: { $ref: '#/components/schemas/LegacyCompatibleExternalErrorResponse' },
                 },
               },
             },
@@ -567,7 +567,7 @@ export function buildOpenApiDocument(origin?: string) {
               description: '缺少 mcps:read scope',
               content: {
                 'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                  schema: { $ref: '#/components/schemas/LegacyCompatibleExternalErrorResponse' },
                 },
               },
             },
@@ -634,6 +634,24 @@ export function buildOpenApiDocument(origin?: string) {
             },
           },
           required: ['code', 'message', 'data'],
+        },
+        LegacyCompatibleExternalErrorResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'FORBIDDEN_RESOURCE_SCOPE_REQUIRED' },
+            normalizedCode: {
+              type: 'string',
+              example: 'UNAUTHORIZED',
+              description: '兼容旧接口时附带的归一化错误码。旧接口会继续把 legacy code 放在 code 字段中。',
+            },
+            error: { type: 'string', example: 'Missing required scopes: models:read' },
+            message: { type: 'string', example: 'Missing required scopes: models:read' },
+            data: {
+              type: 'object',
+              additionalProperties: true,
+            },
+          },
+          required: ['code', 'error', 'message', 'data'],
         },
         RefreshTokenRequest: {
           type: 'object',
@@ -970,6 +988,48 @@ export function buildOpenApiDocument(origin?: string) {
           },
           required: ['data', 'pagination'],
         },
+        MergedModelCatalogItem: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'claude-sonnet-4' },
+            model: { type: 'string', example: 'claude-sonnet-4' },
+            name: { type: 'string', example: 'Claude Sonnet 4' },
+            displayName: { type: 'string', example: 'Claude Sonnet 4' },
+            supportsImage: { type: 'boolean' },
+            enabled: { type: 'boolean' },
+            usageMeta: { $ref: '#/components/schemas/ModelUsageMeta' },
+          },
+          required: ['id', 'model', 'name', 'displayName', 'supportsImage', 'enabled', 'usageMeta'],
+        },
+        MergedModelCatalogProvider: {
+          type: 'object',
+          properties: {
+            provider: { type: 'string', example: 'anthropic' },
+            enabled: { type: 'boolean' },
+            apiKey: { type: 'string' },
+            baseUrl: { type: 'string' },
+            apiFormat: { type: 'string' },
+            codingPlanEnabled: { type: 'boolean' },
+            models: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/MergedModelCatalogItem' },
+            },
+          },
+          required: ['provider', 'enabled', 'apiKey', 'baseUrl', 'apiFormat', 'codingPlanEnabled', 'models'],
+        },
+        MergedModelCatalogData: {
+          type: 'object',
+          properties: {
+            defaultModel: { type: 'string', example: 'claude-sonnet-4' },
+            defaultModelProvider: { type: 'string', example: 'anthropic' },
+            providers: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/MergedModelCatalogProvider' },
+            },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+          required: ['defaultModel', 'defaultModelProvider', 'providers', 'updatedAt'],
+        },
         ModelUsageMeta: {
           type: 'object',
           properties: {
@@ -1004,12 +1064,17 @@ export function buildOpenApiDocument(origin?: string) {
           type: 'object',
           properties: {
             provider: { type: 'string', example: 'anthropic' },
+            apiKey: {
+              type: 'string',
+              description: '兼容旧客户端使用的模型 API Key，加密存储时返回 enc:v1:... 密文；未配置时为空字符串。',
+              example: 'enc:v1:IV_BASE64:AUTH_TAG_BASE64:CIPHERTEXT_BASE64',
+            },
             models: {
               type: 'array',
               items: { $ref: '#/components/schemas/ModelCatalogItem' },
             },
           },
-          required: ['provider', 'models'],
+          required: ['provider', 'apiKey', 'models'],
         },
         ModelCatalogData: {
           type: 'object',
@@ -1028,6 +1093,15 @@ export function buildOpenApiDocument(origin?: string) {
             code: { type: 'string', example: 'OK' },
             message: { type: 'string', example: '' },
             data: { $ref: '#/components/schemas/ModelCatalogData' },
+          },
+          required: ['code', 'message', 'data'],
+        },
+        MergedModelCatalogResponse: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', example: 'OK' },
+            message: { type: 'string', example: '' },
+            data: { $ref: '#/components/schemas/MergedModelCatalogData' },
           },
           required: ['code', 'message', 'data'],
         },

@@ -503,6 +503,7 @@ export async function getCurrentUserModelCatalog(user: ScopedUser) {
   return {
     providers: providers.map((provider) => ({
       provider: provider.providerKey,
+      apiKey: provider.apiKey ?? '',
       models: provider.models.map((model) => ({
         model: model.modelId,
         displayName: model.name,

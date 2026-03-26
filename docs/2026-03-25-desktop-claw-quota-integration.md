@@ -73,11 +73,36 @@ X-Request-Id: <uuid>
 }
 ```
 
+兼容说明：
+
+- `GET /api/external/v1/me/models` 成功响应现在使用单份合并结构：旧模型配置字段与新目录字段合并到 `data` 中，不再返回两整套重复树
+- 历史接口 `GET /api/external/v1/me`、`/me/validate`、`/me/models`、`/me/skills`、`/me/mcps` 在认证失败时会同时返回：
+  - 旧格式字段：`error`
+  - 旧错误码：写在 `code`
+  - 新格式字段：`message`、`data`
+  - 归一化错误码：`normalizedCode`
+
+认证失败兼容示例：
+
+```json
+{
+  "code": "FORBIDDEN_RESOURCE_SCOPE_REQUIRED",
+  "normalizedCode": "UNAUTHORIZED",
+  "error": "Missing required scopes: models:read",
+  "message": "Missing required scopes: models:read",
+  "data": {}
+}
+```
+
 常见错误码：
 
 - `OK`
 - `UNAUTHORIZED`
 - `AUTH_INVALID`
+- `AUTH_MISSING_TOKEN`
+- `AUTH_INVALID_TOKEN`
+- `AUTH_USER_INACTIVE`
+- `FORBIDDEN_RESOURCE_SCOPE_REQUIRED`
 - `MODEL_DISABLED`
 - `MODEL_NOT_FOUND`
 - `QUOTA_NOT_ENOUGH`
@@ -180,13 +205,23 @@ GET /api/external/v1/me/models
   "code": "OK",
   "message": "",
   "data": {
+    "defaultModel": "claude-sonnet-4",
+    "defaultModelProvider": "anthropic",
     "providers": [
       {
         "provider": "anthropic",
+        "enabled": true,
+        "apiKey": "enc:v1:IV_BASE64:AUTH_TAG_BASE64:CIPHERTEXT_BASE64",
+        "baseUrl": "",
+        "apiFormat": "openai",
+        "codingPlanEnabled": false,
         "models": [
           {
+            "id": "claude-sonnet-4",
             "model": "claude-sonnet-4",
+            "name": "Claude Sonnet 4",
             "displayName": "Claude Sonnet 4",
+            "supportsImage": false,
             "enabled": true,
             "usageMeta": {
               "billingTier": "tier_2",
@@ -208,6 +243,10 @@ GET /api/external/v1/me/models
 
 字段说明：
 
+- `defaultModel` / `defaultModelProvider`: 兼容旧配置接口的默认模型信息
+- `apiKey`: 兼容旧客户端使用的模型 API Key；如果服务端保存的是加密值，这里返回 `enc:v1:...` 密文；未配置时为空字符串
+- `baseUrl` / `apiFormat` / `codingPlanEnabled`: 兼容旧配置接口的 provider 配置字段
+- `id` / `name` / `supportsImage`: 兼容旧配置接口的模型字段
 - `enabled`: 是否允许选择
 - `estimatedRemainingMinutes`: 普通用户为估算值；无限用户会返回一个很大的占位值，桌面端应优先看 `isUnlimited`
 - `usageMeta.isUnlimited`: 可选，管理员角色为 `true`
@@ -649,7 +688,7 @@ GET /api/external/v1/me/usage-summary?range=7d
 - `clientSessionId` 应稳定且唯一，建议一轮实际会话只生成一次
 - `idempotencyKey` 不要复用到不同请求体
 - `finish` 即使在本地认为已经结束，也建议重试到成功，直到服务端确认 `closed=true`
-- 如果服务端返回 `AUTH_INVALID` 或 `UNAUTHORIZED`，桌面端应重新走登录/刷新 token
+- 如果服务端返回 `AUTH_INVALID`、`UNAUTHORIZED`，或历史兼容错误码 `AUTH_INVALID_TOKEN`、`AUTH_MISSING_TOKEN`、`AUTH_USER_INACTIVE`、`FORBIDDEN_RESOURCE_SCOPE_REQUIRED`，桌面端应重新走登录/刷新 token 或检查 scope
 - 如果服务端返回 `MODEL_DISABLED`，应要求用户重新选择模型
 - 如果服务端返回 `QUOTA_NOT_ENOUGH` 或 `QUOTA_EXHAUSTED`，应停止会话并刷新配额展示
 
@@ -660,6 +699,7 @@ GET /api/external/v1/me/usage-summary?range=7d
 - `isUnlimited`
   - 出现在 `GET /me/quota`
   - 也可能出现在 `models.prepare.heartbeat.finish` 的响应 `data` 中
+- `GET /me/models` 把旧配置字段与新目录字段合并到同一个 `data` 结构里
+- 历史 external 接口鉴权失败时会同时返回 `error` 与 `message`，并保留 legacy `code`
 
 当前代码实现中，管理员无限使用为真实后端规则，不只是前端展示策略。
-

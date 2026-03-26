@@ -176,7 +176,7 @@ if __name__ == "__main__":
 - 创建时加密：`src/app/api/v1/models/route.ts`
 - 更新时加密：`src/app/api/v1/models/[id]/route.ts`
 - 只读模型配置接口返回加密密文：`src/app/api/client/models/route.ts`
-- 外部模型配置接口返回加密密文：`src/app/api/external/v1/me/models/route.ts`
+- 外部模型目录接口在 provider 层兼容返回加密密文：`src/app/api/external/v1/me/models/route.ts`
 
 ## 8. 安全建议
 
