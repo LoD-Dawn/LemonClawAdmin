@@ -72,6 +72,13 @@ ADMIN_EMAIL="admin@local.com"
 ADMIN_PASSWORD="admin123"
 JWT_SECRET="your-jwt-secret-here"
 MODEL_API_KEY_ENCRYPTION_SECRET="your-model-api-key-secret"
+EMAIL_VERIFICATION_SECRET="change-this-email-verification-secret"
+QQ_SMTP_HOST="smtp.qq.com"
+QQ_SMTP_PORT="465"
+QQ_SMTP_SECURE="true"
+QQ_SMTP_USER="your-qq-mail@qq.com"
+QQ_SMTP_PASS="your-qq-smtp-authorize-code"
+QQ_SMTP_FROM="LemonClaw <your-qq-mail@qq.com>"
 ```
 
 建议做法：
@@ -86,6 +93,8 @@ MODEL_API_KEY_ENCRYPTION_SECRET="your-model-api-key-secret"
 - `ADMIN_EMAIL` 和 `ADMIN_PASSWORD` 会被种子脚本用来创建默认管理员
 - `NEXTAUTH_SECRET` 和 `JWT_SECRET` 在真实环境中请务必替换为强随机值
 - `MODEL_API_KEY_ENCRYPTION_SECRET` 用来加密模型提供商的 API Key，生产环境请使用独立强随机值
+- `EMAIL_VERIFICATION_SECRET` 用来哈希邮箱验证码，生产环境请使用独立强随机值
+- `QQ_SMTP_PASS` 需要填写 QQ 邮箱开启 SMTP 后生成的授权码，不是邮箱登录密码
 - `Prisma CLI` 默认读取根目录 `.env`，所以数据库相关变量建议放在 `.env` 中
 
 ### 3. 初始化数据库
@@ -129,7 +138,15 @@ npm run dev
 
 ## 默认账号
 
-执行 `npm run db:seed` 后，会创建一个默认超级管理员：
+执行 `npm run db:seed` 后，会创建默认组织结构和一个默认超级管理员：
+
+- 根组织：`总公司`
+- 普通用户默认组织：`普通用户组织`
+- 普通用户自助注册后会自动归属到 `普通用户组织`，账号类型为 `consumer`
+- 企业账号由管理员创建，账号类型为 `enterprise`，即使角色同样是普通员工，也与自注册普通用户不同
+- `普通用户组织` 是初始化内置节点，不能删除，也不能继续创建下级组织
+
+默认超级管理员：
 
 - 邮箱：`admin@local.com`
 - 密码：`admin123`
@@ -233,6 +250,7 @@ npm run lint
 npm run db:generate
 npm run db:push
 npm run db:migrate
+npm run db:ensure-schema
 npm run db:seed
 
 npm run import:resources
@@ -247,7 +265,8 @@ npm run import:resources
 - `npm run db:generate`：重新生成 Prisma Client
 - `npm run db:push`：将 schema 推送到数据库
 - `npm run db:migrate`：创建并执行开发迁移
-- `npm run db:seed`：写入默认组织和超级管理员
+- `npm run db:ensure-schema`：对已部署数据库执行幂等修复，补齐当前代码所需字段
+- `npm run db:seed`：写入默认组织、普通用户默认组织和超级管理员
 - `npm run import:resources`：批量导入 Skill / MCP 资源
 
 ## 资源导入

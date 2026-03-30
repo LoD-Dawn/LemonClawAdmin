@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireApiAuth } from '@/middleware/api-auth'
 import { db } from '@/lib/db'
+import { DEFAULT_CONSUMER_ORGANIZATION_ID } from '@/lib/default-organizations'
 import { buildOrganizationPath } from '@/lib/organizations'
 import { z } from 'zod'
 import { recordOperationLog } from '@/lib/operation-log'
@@ -58,14 +59,29 @@ export async function POST(request: NextRequest) {
 
   const { name, type, parentId } = parsed.data
 
-  if (parentId) {
-    const parent = await db.organization.findUnique({ where: { id: parentId } })
-    if (!parent) {
-      return NextResponse.json(
-        { error: 'Parent organization not found', code: 'NOT_FOUND_PARENT' },
-        { status: 404 }
-      )
-    }
+  if (!parentId) {
+    return NextResponse.json(
+      {
+        error: 'Top-level organizations are not allowed. Please create the organization under the root company.',
+        code: 'CONFLICT_TOP_LEVEL_ORGANIZATION_FORBIDDEN',
+      },
+      { status: 409 }
+    )
+  }
+
+  const parent = await db.organization.findUnique({ where: { id: parentId } })
+  if (!parent) {
+    return NextResponse.json(
+      { error: 'Parent organization not found', code: 'NOT_FOUND_PARENT' },
+      { status: 404 }
+    )
+  }
+
+  if (parentId === DEFAULT_CONSUMER_ORGANIZATION_ID) {
+    return NextResponse.json(
+      { error: 'Default consumer organization cannot have child organizations', code: 'CONFLICT_PROTECTED_CONSUMER_ORG_CHILDREN' },
+      { status: 409 }
+    )
   }
 
   const { path, level } = await buildOrganizationPath(parentId, name)

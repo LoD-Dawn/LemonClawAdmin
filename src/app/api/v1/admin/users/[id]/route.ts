@@ -10,6 +10,7 @@ import {
   validateUserPermissionScope,
 } from '@/lib/user-role-policy'
 import { recordOperationLog } from '@/lib/operation-log'
+import { DEFAULT_PRICING_VERSION } from '@/lib/user-claw-quota-policy'
 
 const PROTECTED_ADMIN_EMAIL = 'admin@local.com'
 
@@ -17,6 +18,7 @@ const updateSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().min(8).optional(),
   name: z.string().min(1).max(255).optional(),
+  accountType: z.enum(['consumer', 'enterprise']).optional(),
   organizationId: z.string().uuid().nullable().optional(),
   isSuperAdmin: z.boolean().optional(),
   isDepartmentAdmin: z.boolean().optional(),
@@ -65,6 +67,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       id: true,
       email: true,
       name: true,
+      accountType: true,
       organizationId: true,
       isSuperAdmin: true,
       isDepartmentAdmin: true,
@@ -102,10 +105,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     delete updateData.password
   }
 
-  const hasPermissionFieldUpdate = ['organizationId', 'isSuperAdmin', 'isDepartmentAdmin', 'departmentId']
+  const hasPermissionFieldUpdate = ['accountType', 'organizationId', 'isSuperAdmin', 'isDepartmentAdmin', 'departmentId']
     .some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key))
   const nextPermissionState = hasPermissionFieldUpdate
     ? normalizeUserPermissionInput({
+        accountType: Object.prototype.hasOwnProperty.call(parsed.data, 'accountType')
+          ? parsed.data.accountType
+          : existingUser.accountType,
         organizationId: Object.prototype.hasOwnProperty.call(parsed.data, 'organizationId')
           ? parsed.data.organizationId
           : existingUser.organizationId,
@@ -148,6 +154,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     updateData.organizationId = nextPermissionState.organizationId
+    updateData.accountType = nextPermissionState.accountType
     updateData.isSuperAdmin = nextPermissionState.isSuperAdmin
     updateData.isDepartmentAdmin = nextPermissionState.isDepartmentAdmin
     updateData.departmentId = nextPermissionState.departmentId
@@ -171,7 +178,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             ? { creditBalance: quotaPatch.creditBalance ?? 0 }
             : {}),
           ...(Object.prototype.hasOwnProperty.call(parsed.data, 'pricingVersion')
-            ? { pricingVersion: quotaPatch.pricingVersion ?? '2026-03-v2' }
+            ? { pricingVersion: quotaPatch.pricingVersion ?? DEFAULT_PRICING_VERSION }
             : {}),
           ...(Object.prototype.hasOwnProperty.call(parsed.data, 'quotaExpiresAt')
             ? { expiresAt: quotaPatch.quotaExpiresAt ? new Date(quotaPatch.quotaExpiresAt) : null }
@@ -180,7 +187,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         create: {
           userId: id,
           creditBalance: quotaPatch.creditBalance ?? 0,
-          pricingVersion: quotaPatch.pricingVersion ?? '2026-03-v2',
+          pricingVersion: quotaPatch.pricingVersion ?? DEFAULT_PRICING_VERSION,
           expiresAt: quotaPatch.quotaExpiresAt ? new Date(quotaPatch.quotaExpiresAt) : null,
         },
       })
@@ -219,6 +226,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     metadata: {
       email: user.email,
       name: user.name,
+      accountType: user.accountType,
       organizationId: user.organizationId,
       isSuperAdmin: user.isSuperAdmin,
       isDepartmentAdmin: user.isDepartmentAdmin,

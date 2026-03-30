@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { signOut } from 'next-auth/react'
+import {
+  ACCOUNT_TYPE_LABELS,
+  DEFAULT_CONSUMER_ORGANIZATION_ID,
+  isDefaultConsumerOrganizationId,
+  type AccountTypeValue,
+} from '@/lib/default-organizations'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +28,7 @@ interface User {
   id: string
   name: string
   email: string
+  accountType: AccountTypeValue
   isSuperAdmin: boolean
   isDepartmentAdmin: boolean
   departmentId?: string | null
@@ -92,6 +99,7 @@ export function UserEditDialog({
   const [email, setEmail] = useState(user?.email || '')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [accountType, setAccountType] = useState<AccountTypeValue>(user?.accountType || 'enterprise')
   const [organizationId, setOrganizationId] = useState(user?.organization?.id || '')
   const [departmentId, setDepartmentId] = useState(user?.department?.id || user?.departmentId || '')
   const [role, setRole] = useState<UserRoleValue>(
@@ -102,11 +110,16 @@ export function UserEditDialog({
   const [quotaExpiresAt, setQuotaExpiresAt] = useState(toDateTimeLocalValue(user?.clawQuota?.expiresAt))
   const [error, setError] = useState('')
 
-  const selectedOrganization = getOrganizationById(organizations, organizationId)
-  const allowedRoles = getAllowedUserRoles(selectedOrganization)
-  const availableDepartments = getAssignableDepartments(organizations, organizationId)
-  const forceOwnDepartment = isDepartmentOrganization(selectedOrganization)
+  const defaultConsumerOrganization = organizations.find((organization) => isDefaultConsumerOrganizationId(organization.id)) ?? null
+  const effectiveOrganizationId = accountType === 'consumer'
+    ? defaultConsumerOrganization?.id ?? DEFAULT_CONSUMER_ORGANIZATION_ID
+    : organizationId
+  const selectedOrganization = getOrganizationById(organizations, effectiveOrganizationId)
+  const allowedRoles = getAllowedUserRoles(selectedOrganization, accountType)
+  const availableDepartments = getAssignableDepartments(organizations, effectiveOrganizationId, accountType)
+  const forceOwnDepartment = accountType === 'enterprise' && isDepartmentOrganization(selectedOrganization)
   const isUnlimitedRole = role === 'super_admin' || role === 'department_admin'
+  const enterpriseOrganizations = organizations.filter((organization) => !isDefaultConsumerOrganizationId(organization.id))
 
   useEffect(() => {
     if (user) {
@@ -114,6 +127,7 @@ export function UserEditDialog({
       setEmail(user.email)
       setPassword('')
       setConfirmPassword('')
+      setAccountType(user.accountType)
       setOrganizationId(user.organization?.id || '')
       setDepartmentId(user.department?.id || user.departmentId || '')
       setRole(user.isSuperAdmin ? 'super_admin' : user.isDepartmentAdmin ? 'department_admin' : 'user')
@@ -125,10 +139,17 @@ export function UserEditDialog({
   }, [user])
 
   useEffect(() => {
-    const normalizedRole = normalizeRoleForOrganization(role, selectedOrganization)
+    const normalizedRole = normalizeRoleForOrganization(role, selectedOrganization, accountType)
 
     if (normalizedRole !== role) {
       setRole(normalizedRole)
+      return
+    }
+
+    if (accountType === 'consumer') {
+      if (departmentId) {
+        setDepartmentId('')
+      }
       return
     }
 
@@ -148,11 +169,16 @@ export function UserEditDialog({
     if (departmentId && !availableDepartments.some((organization) => organization.id === departmentId)) {
       setDepartmentId('')
     }
-  }, [availableDepartments, departmentId, forceOwnDepartment, role, selectedOrganization])
+  }, [accountType, availableDepartments, departmentId, forceOwnDepartment, role, selectedOrganization])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
+
+    if (accountType === 'consumer' && !defaultConsumerOrganization) {
+      setError('默认普通用户组织不存在')
+      return
+    }
 
     if (selectedOrganization?.type === 'department' && role === 'super_admin') {
       setError('部门组织下不能选择超级管理员')
@@ -202,7 +228,10 @@ export function UserEditDialog({
           name,
           email,
           ...(password ? { password } : {}),
-          organizationId: organizationId || null,
+          accountType,
+          organizationId: accountType === 'consumer'
+            ? (defaultConsumerOrganization?.id ?? DEFAULT_CONSUMER_ORGANIZATION_ID)
+            : organizationId || null,
           isSuperAdmin: role === 'super_admin',
           isDepartmentAdmin: role === 'department_admin',
           departmentId: role === 'department_admin' ? (departmentId || null) : null,
@@ -226,8 +255,8 @@ export function UserEditDialog({
         }
         toast({ title: passwordChanged ? '用户与密码已更新' : '用户已更新' })
       } else {
-        const error = await res.json()
-        toast({ title: '错误', description: error.error, variant: 'destructive' })
+        const errorResponse = await res.json()
+        toast({ title: '错误', description: errorResponse.error, variant: 'destructive' })
       }
     } catch {
       toast({ title: '错误', description: '更新失败', variant: 'destructive' })
@@ -241,7 +270,7 @@ export function UserEditDialog({
       <DialogContent className="sm:max-w-[820px]">
         <DialogHeader>
           <DialogTitle>编辑用户</DialogTitle>
-          <DialogDescription>统一调整账号信息、角色归属和 Claw 使用配置。</DialogDescription>
+          <DialogDescription>统一调整账号类型、组织归属、角色权限和 Claw 使用配置。</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_320px]">
           <div className="space-y-4">
@@ -294,19 +323,39 @@ export function UserEditDialog({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
+                <Label htmlFor="edit-account-type">账号类型</Label>
+                <select
+                  id="edit-account-type"
+                  value={accountType}
+                  onChange={e => setAccountType(e.target.value as AccountTypeValue)}
+                  className="w-full border rounded-md px-3 py-2 h-10 bg-white"
+                >
+                  <option value="enterprise">{ACCOUNT_TYPE_LABELS.enterprise}</option>
+                  <option value="consumer">{ACCOUNT_TYPE_LABELS.consumer}</option>
+                </select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-organization">组织</Label>
                 <select
                   id="edit-organization"
-                  value={organizationId}
+                  value={accountType === 'consumer' ? (defaultConsumerOrganization?.id ?? '') : organizationId}
                   onChange={e => setOrganizationId(e.target.value)}
                   className="w-full border rounded-md px-3 py-2 h-10 bg-white"
+                  disabled={accountType === 'consumer'}
                 >
-                  <option value="">无</option>
-                  {organizations.map(org => (
-                    <option key={org.id} value={org.id}>{org.name}</option>
+                  {accountType === 'enterprise' ? <option value="">无</option> : null}
+                  {(accountType === 'consumer'
+                    ? organizations.filter((organization) => isDefaultConsumerOrganizationId(organization.id))
+                    : enterpriseOrganizations).map((organization) => (
+                    <option key={organization.id} value={organization.id}>{organization.name}</option>
                   ))}
                 </select>
+                {accountType === 'consumer' ? (
+                  <p className="text-sm text-muted-foreground">普通用户账号固定归属默认普通用户组织。</p>
+                ) : null}
               </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="edit-role">角色</Label>
                 <select
@@ -315,36 +364,38 @@ export function UserEditDialog({
                   onChange={e => setRole(e.target.value as UserRoleValue)}
                   className={`w-full border rounded-md px-3 py-2 h-10 bg-white ${error ? 'border-destructive' : ''}`}
                 >
-                  {allowedRoles.includes('user') && <option value="user">普通员工</option>}
+                  {allowedRoles.includes('user') && <option value="user">{accountType === 'consumer' ? '普通用户' : '普通员工'}</option>}
                   {allowedRoles.includes('department_admin') && <option value="department_admin">部门管理员</option>}
                   {allowedRoles.includes('super_admin') && <option value="super_admin">超级管理员</option>}
                 </select>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-department">管理部门</Label>
-              <select
-                id="edit-department"
-                value={departmentId}
-                onChange={e => setDepartmentId(e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-10 bg-white"
-                disabled={role !== 'department_admin' || forceOwnDepartment}
-              >
-                <option value="">无</option>
-                {availableDepartments.map(org => (
-                  <option key={org.id} value={org.id}>{org.name}</option>
-                ))}
-              </select>
-              {forceOwnDepartment && role === 'department_admin' && (
-                <p className="text-sm text-muted-foreground">所属组织是部门时，管理范围固定为当前部门。</p>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="edit-department">管理部门</Label>
+                <select
+                  id="edit-department"
+                  value={departmentId}
+                  onChange={e => setDepartmentId(e.target.value)}
+                  className="w-full border rounded-md px-3 py-2 h-10 bg-white"
+                  disabled={accountType === 'consumer' || role !== 'department_admin' || forceOwnDepartment}
+                >
+                  <option value="">无</option>
+                  {availableDepartments.map((organization) => (
+                    <option key={organization.id} value={organization.id}>{organization.name}</option>
+                  ))}
+                </select>
+                {forceOwnDepartment && role === 'department_admin' && (
+                  <p className="text-sm text-muted-foreground">所属组织是部门时，管理范围固定为当前部门。</p>
+                )}
+              </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="space-y-3">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Claw 配额设置</div>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
-                    普通员工按照积分控制使用时长。超级管理员和部门管理员默认无限使用，不需要手动设置积分。
+                    {accountType === 'consumer'
+                      ? '普通用户账号通过普通用户入口登录，按个人积分配额控制使用时长。'
+                      : '企业账号中的普通员工按积分控制使用时长，管理员默认无限使用。'}
                   </p>
                 </div>
                 {isUnlimitedRole ? (

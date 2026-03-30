@@ -9,11 +9,13 @@ import {
   validateUserPermissionScope,
 } from '@/lib/user-role-policy'
 import { recordOperationLog } from '@/lib/operation-log'
+import { DEFAULT_PRICING_VERSION } from '@/lib/user-claw-quota-policy'
 
 const createSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(1).max(255),
+  accountType: z.enum(['consumer', 'enterprise']).optional(),
   organizationId: z.string().uuid().nullable().optional(),
   isSuperAdmin: z.boolean().optional(),
   isDepartmentAdmin: z.boolean().optional(),
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
           data: {
             userId: user.id,
             creditBalance: creditBalance ?? 0,
-            pricingVersion: pricingVersion ?? '2026-03-v2',
+            pricingVersion: pricingVersion ?? DEFAULT_PRICING_VERSION,
             expiresAt: quotaExpiresAt ? new Date(quotaExpiresAt) : null,
           },
         })
@@ -126,6 +128,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         email: user.email,
         name: user.name,
+        accountType: user.accountType,
         organizationId: user.organizationId,
         isSuperAdmin: user.isSuperAdmin,
         isDepartmentAdmin: user.isDepartmentAdmin,

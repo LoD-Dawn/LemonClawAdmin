@@ -20,6 +20,7 @@ interface HeaderProps {
   user: {
     name?: string | null
     email?: string | null
+    accountType?: 'consumer' | 'enterprise'
     isSuperAdmin: boolean
     isDepartmentAdmin?: boolean
   }
@@ -28,7 +29,13 @@ interface HeaderProps {
 export function Header({ user }: HeaderProps) {
   const pathname = usePathname()
   const currentPageTitle = routeNames[pathname] || '管理台'
-  const roleLabel = user.isSuperAdmin ? '超级管理员' : user.isDepartmentAdmin ? '部门管理员' : '个人用户'
+  const roleLabel = user.isSuperAdmin
+    ? '超级管理员'
+    : user.isDepartmentAdmin
+      ? '部门管理员'
+      : user.accountType === 'consumer'
+        ? '普通用户'
+        : '企业成员'
   const roleTone = user.isSuperAdmin
     ? 'border-rose-200 bg-rose-50 text-rose-700'
     : user.isDepartmentAdmin

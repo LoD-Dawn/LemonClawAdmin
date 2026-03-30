@@ -21,6 +21,7 @@ async function authenticateApiKeyActor(request: NextRequest) {
         client,
         user: {
           id: client.id,
+          accountType: 'enterprise',
           isSuperAdmin: true,
           isDepartmentAdmin: false,
           departmentId: null,

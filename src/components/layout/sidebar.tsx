@@ -34,6 +34,7 @@ interface SidebarProps {
     name?: string | null
     email?: string | null
     image?: string | null
+    accountType?: 'consumer' | 'enterprise'
     isSuperAdmin: boolean
     isDepartmentAdmin: boolean
   }
@@ -152,7 +153,13 @@ export function Sidebar({ user }: SidebarProps) {
     setOpenSectionId(prev => (prev === sectionId ? null : sectionId))
   }
 
-  const roleLabel = isSuperAdmin ? '超级管理员' : isDeptAdmin ? '部门管理员' : '个人空间'
+  const roleLabel = isSuperAdmin
+    ? '超级管理员'
+    : isDeptAdmin
+      ? '部门管理员'
+      : user.accountType === 'consumer'
+        ? '普通用户空间'
+        : '企业成员空间'
 
   return (
     <aside className="admin-sidebar-shell">

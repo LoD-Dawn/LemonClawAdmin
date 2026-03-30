@@ -4,8 +4,11 @@ import { db } from '@/lib/db'
 import { getOrganizationScopeIds } from '@/lib/organizations'
 import { pickPreferredProviders } from '@/lib/model-config'
 import { ExternalApiError } from '@/lib/external-v1'
-
-const DEFAULT_PRICING_VERSION = '2026-03-v2'
+import {
+  DEFAULT_PRICING_VERSION,
+  getEffectiveUserClawCreditBalance,
+  isUserClawQuotaExpired,
+} from '@/lib/user-claw-quota-policy'
 const UNLIMITED_ESTIMATED_MINUTES = 999999999
 
 type ScopedUser = {
@@ -166,7 +169,7 @@ function parseStoredResponse<T extends SerializableData>(record: {
 }
 
 async function ensureUserClawQuota(userId: string, tx: Prisma.TransactionClient | typeof db = db) {
-  return tx.userClawQuota.upsert({
+  const quota = await tx.userClawQuota.upsert({
     where: { userId },
     update: {},
     create: {
@@ -174,6 +177,17 @@ async function ensureUserClawQuota(userId: string, tx: Prisma.TransactionClient 
       pricingVersion: DEFAULT_PRICING_VERSION,
     },
   })
+
+  if (isUserClawQuotaExpired(quota) && quota.creditBalance > 0) {
+    return tx.userClawQuota.update({
+      where: { userId },
+      data: {
+        creditBalance: 0,
+      },
+    })
+  }
+
+  return quota
 }
 
 function buildUnlimitedQuotaSnapshot(userId: string, quota?: Awaited<ReturnType<typeof ensureUserClawQuota>> | null) {
@@ -189,11 +203,13 @@ function buildUnlimitedQuotaSnapshot(userId: string, quota?: Awaited<ReturnType<
 }
 
 function toQuotaSnapshot(quota: Awaited<ReturnType<typeof ensureUserClawQuota>>) {
+  const creditBalance = getEffectiveUserClawCreditBalance(quota)
+
   return {
     userId: quota.userId,
     isUnlimited: false,
-    creditBalance: quota.creditBalance,
-    remainingClawSeconds: remainingClawSeconds(quota.creditBalance),
+    creditBalance,
+    remainingClawSeconds: remainingClawSeconds(creditBalance),
     pricingVersion: quota.pricingVersion,
     expiresAt: serializeDate(quota.expiresAt),
     updatedAt: quota.updatedAt.toISOString(),
@@ -499,6 +515,7 @@ export async function getCurrentUserModelCatalog(user: ScopedUser) {
 
     return latest
   }, quota?.updatedAt ?? null)
+  const effectiveCreditBalance = unlimited ? quota?.creditBalance ?? 0 : getEffectiveUserClawCreditBalance(quota)
 
   return {
     providers: providers.map((provider) => ({
@@ -516,7 +533,7 @@ export async function getCurrentUserModelCatalog(user: ScopedUser) {
           toolPolicy: model.toolPolicy,
           estimatedRemainingMinutes: unlimited
             ? UNLIMITED_ESTIMATED_MINUTES
-            : Math.floor((quota?.creditBalance ?? 0) / model.creditPerMinute),
+            : Math.floor(effectiveCreditBalance / model.creditPerMinute),
           isUnlimited: unlimited,
         },
       })),

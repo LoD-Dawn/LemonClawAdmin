@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ACCOUNT_TYPE_LABELS, type AccountTypeValue } from '@/lib/default-organizations'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
@@ -22,6 +23,7 @@ type User = {
   id: string
   name: string
   email: string
+  accountType: AccountTypeValue
   isSuperAdmin: boolean
   isDepartmentAdmin: boolean
   isActive: boolean
@@ -118,6 +120,15 @@ export function UsersTable({
       cell: ({ row }) => row.original.organization?.name || '-',
     },
     {
+      accessorKey: 'accountType',
+      header: '账号类型',
+      cell: ({ row }) => (
+        <Badge variant={row.original.accountType === 'enterprise' ? 'secondary' : 'outline'}>
+          {ACCOUNT_TYPE_LABELS[row.original.accountType]}
+        </Badge>
+      ),
+    },
+    {
       accessorKey: 'department.name',
       header: '管理范围',
       cell: ({ row }) => row.original.department?.name || '-',
@@ -174,7 +185,11 @@ export function UsersTable({
           return <Badge variant="secondary">部门管理员</Badge>
         }
 
-        return <Badge variant="outline">普通员工</Badge>
+        return (
+          <Badge variant="outline">
+            {row.original.accountType === 'consumer' ? '普通用户' : '普通员工'}
+          </Badge>
+        )
       },
     },
     {

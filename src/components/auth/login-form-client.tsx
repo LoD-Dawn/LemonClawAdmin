@@ -1,13 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import type { LoginEntryMode } from '@/lib/default-organizations'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowRight, Cpu, Globe, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  Globe,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+  UserRound,
+} from 'lucide-react'
 
 interface LoginFormClientProps {
   oauthParams?: {
@@ -18,27 +28,52 @@ interface LoginFormClientProps {
   }
 }
 
+type EntryMode = 'consumer' | 'enterprise'
+type FormMode = 'login' | 'register'
+
 export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const initialEntryMode: EntryMode = (() => {
+    const queryEntryMode = searchParams.get('entryMode')
+    if (queryEntryMode === 'enterprise') {
+      return 'enterprise'
+    }
+
+    const callbackUrl = searchParams.get('callbackUrl') || ''
+    if (callbackUrl.startsWith('/dashboard')) {
+      return 'enterprise'
+    }
+
+    return 'consumer'
+  })()
+  const [entryMode, setEntryMode] = useState<EntryMode>(initialEntryMode)
+  const [formMode, setFormMode] = useState<FormMode>('login')
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const callbackUrl = searchParams.get('callbackUrl') || '/client'
+  const [successMessage, setSuccessMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [registerEmail, setRegisterEmail] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [isSendingVerificationCode, setIsSendingVerificationCode] = useState(false)
+  const [verificationCooldown, setVerificationCooldown] = useState(0)
 
   const oauth = oauthParams || {
     client_id: searchParams.get('client_id') || '',
     redirect_uri: searchParams.get('redirect_uri') || '',
     state: searchParams.get('state') || '',
-    scope: searchParams.get('scope') || 'skills:read mcps:read models:read quota:read claw:sessions:write'
+    scope: searchParams.get('scope') || 'skills:read mcps:read models:read quota:read claw:sessions:write',
   }
 
+  const requestedCallbackUrl = searchParams.get('callbackUrl')
+  const callbackUrl = requestedCallbackUrl || (entryMode === 'enterprise' ? '/dashboard' : '/client')
   const hasRedirectUri = !!oauth.redirect_uri
   const isOAuthFlow = !!oauth.client_id
   const isDesktopAuthFlow = hasRedirectUri && !oauth.client_id
   const isAuthFlow = isOAuthFlow || isDesktopAuthFlow
+  const allowRegistration = entryMode === 'consumer'
   const scopeTokens = oauth.scope.split(/\s+/).filter(Boolean)
-  let redirectHost = ''
 
+  let redirectHost = ''
   if (oauth.redirect_uri) {
     try {
       redirectHost = new URL(oauth.redirect_uri).host
@@ -55,125 +90,262 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
         .join(' ')
     : ''
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
+  const title = isAuthFlow
+    ? '登录并继续授权'
+    : formMode === 'register'
+      ? '创建普通用户账号'
+      : entryMode === 'enterprise'
+        ? '企业用户登录'
+        : '欢迎登录'
 
-    const formData = new FormData(e.currentTarget)
+  const description = isAuthFlow
+    ? '完成登录后，系统会继续当前授权流程并跳转回目标应用。'
+    : formMode === 'register'
+      ? '注册后会自动登录并进入普通用户工作台。'
+      : entryMode === 'enterprise'
+        ? '适用于企业成员、部门管理员和平台管理员。企业账号通常由管理员统一开通。'
+        : '适用于普通用户查看资源、提交申请和管理个人工作区。没有账号时可直接注册。'
 
-    const result = await signIn('credentials', {
-      email: formData.get('email'),
-      password: formData.get('password'),
-      redirect: false
-    })
+  async function finishAuthFlow() {
+    if (isOAuthFlow) {
+      const response = await fetch('/api/v1/auth/authorize/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: oauth.client_id,
+          redirect_uri: oauth.redirect_uri,
+          state: oauth.state,
+          scope: oauth.scope,
+        }),
+      })
 
-    if (result?.error) {
-      setError('Invalid email or password')
-      setIsLoading(false)
+      if (!response.ok) {
+        throw new Error('授权失败，请稍后重试。')
+      }
+
+      const { code } = await response.json()
+      const redirectUrl = new URL(oauth.redirect_uri)
+      redirectUrl.searchParams.set('code', code)
+      if (oauth.state) redirectUrl.searchParams.set('state', oauth.state)
+      router.push(redirectUrl.toString())
       return
     }
 
-    if (isOAuthFlow) {
-      // Generate auth code and redirect for browser-based OAuth clients.
-      try {
-        const response = await fetch('/api/v1/auth/authorize/consent', {
+    if (isDesktopAuthFlow) {
+      const response = await fetch('/api/v1/auth/desktop/authorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          redirect_uri: oauth.redirect_uri,
+          state: oauth.state,
+          scope: oauth.scope,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('桌面端授权失败，请稍后重试。')
+      }
+
+      const { callback_url } = await response.json()
+      window.location.href = callback_url
+      return
+    }
+
+    router.push(callbackUrl)
+    router.refresh()
+  }
+
+  async function loginWithCredentials(email: string, password: string, entryMode: LoginEntryMode) {
+    const result = await signIn('credentials', {
+      email,
+      password,
+      entryMode,
+      redirect: false,
+    })
+
+    if (result?.error) {
+      throw new Error(
+        entryMode === 'enterprise'
+          ? '邮箱或密码错误，或该账号不属于企业用户入口。'
+          : '邮箱或密码错误，或该账号不属于普通用户入口。'
+      )
+    }
+
+    await finishAuthFlow()
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    setSuccessMessage('')
+    setIsSubmitting(true)
+
+    const formData = new FormData(event.currentTarget)
+    const name = String(formData.get('name') || '').trim()
+    const email = String(formData.get('email') || '').trim()
+    const password = String(formData.get('password') || '')
+    const confirmPassword = String(formData.get('confirmPassword') || '')
+    const submittedVerificationCode = String(formData.get('verificationCode') || '').trim()
+
+    try {
+      if (formMode === 'register') {
+        if (!allowRegistration) {
+          throw new Error('企业用户暂不支持自助注册，请联系管理员开通账号。')
+        }
+
+        if (password.length < 8) {
+          throw new Error('密码至少需要 8 位。')
+        }
+
+        if (password !== confirmPassword) {
+          throw new Error('两次输入的密码不一致。')
+        }
+
+        if (!/^\d{6}$/.test(submittedVerificationCode)) {
+          throw new Error('请输入 6 位邮箱验证码。')
+        }
+
+        const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            client_id: oauth.client_id,
-            redirect_uri: oauth.redirect_uri,
-            state: oauth.state,
-            scope: oauth.scope
-          })
+          body: JSON.stringify({ name, email, password, verificationCode: submittedVerificationCode }),
         })
 
-        if (response.ok) {
-          const { code } = await response.json()
-          const redirectUrl = new URL(oauth.redirect_uri)
-          redirectUrl.searchParams.set('code', code)
-          if (oauth.state) redirectUrl.searchParams.set('state', oauth.state)
-          router.push(redirectUrl.toString())
-        } else {
-          setError('Authorization failed')
-          setIsLoading(false)
+        const result = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(result.error || '注册失败，请稍后重试。')
         }
-      } catch {
-        setError('Authorization failed')
-        setIsLoading(false)
-      }
-    } else if (isDesktopAuthFlow) {
-      try {
-        const response = await fetch('/api/v1/auth/desktop/authorize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            redirect_uri: oauth.redirect_uri,
-            state: oauth.state,
-            scope: oauth.scope
-          })
-        })
 
-        if (response.ok) {
-          const { callback_url } = await response.json()
-          window.location.href = callback_url
-        } else {
-          setError('Desktop authorization failed')
-          setIsLoading(false)
-        }
-      } catch {
-        setError('Desktop authorization failed')
-        setIsLoading(false)
+        setSuccessMessage('注册成功，正在为你登录...')
       }
-    } else {
-      router.push(callbackUrl)
-      router.refresh()
+
+      await loginWithCredentials(email, password, entryMode)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : '提交失败，请稍后重试。')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  function handleEntryModeChange(nextMode: EntryMode) {
+    setEntryMode(nextMode)
+    setError('')
+    setSuccessMessage('')
+    if (nextMode !== 'consumer') {
+      setRegisterEmail('')
+      setVerificationCode('')
+      setVerificationCooldown(0)
+      setIsSendingVerificationCode(false)
+    }
+    if (nextMode === 'enterprise' && formMode === 'register') {
+      setFormMode('login')
+    }
+  }
+
+  const isRegisterMode = formMode === 'register'
+
+  useEffect(() => {
+    if (verificationCooldown <= 0) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setVerificationCooldown((current) => Math.max(0, current - 1))
+    }, 1000)
+
+    return () => window.clearTimeout(timer)
+  }, [verificationCooldown])
+
+  async function handleSendVerificationCode() {
+    const email = registerEmail.trim()
+    setError('')
+    setSuccessMessage('')
+
+    if (!email) {
+      setError('请先输入注册邮箱。')
+      return
+    }
+
+    setIsSendingVerificationCode(true)
+
+    try {
+      const response = await fetch('/api/auth/register/email-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        if (result?.data?.cooldownRemaining) {
+          setVerificationCooldown(Number(result.data.cooldownRemaining) || 0)
+        }
+        throw new Error(result.error || '验证码发送失败，请稍后重试。')
+      }
+
+      setVerificationCooldown(Number(result?.data?.resendInSeconds) || 60)
+      setSuccessMessage(result.message || '验证码已发送，请查收邮箱。')
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : '验证码发送失败，请稍后重试。')
+    } finally {
+      setIsSendingVerificationCode(false)
     }
   }
 
   return (
-    <Card className="login-panel login-panel-glow w-full max-w-[460px] overflow-hidden rounded-[2rem] border-white/10 bg-slate-950/75 text-white shadow-[0_32px_80px_rgba(2,6,23,0.48)] backdrop-blur-xl">
-      <CardHeader className="space-y-6 p-7 pb-0 sm:p-8 sm:pb-0">
-        <div className="flex items-center justify-between gap-4">
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-slate-200 backdrop-blur-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 via-amber-200 to-orange-300 text-slate-950 shadow-lg shadow-amber-500/20">
-              <Cpu className="h-4 w-4" />
+    <Card className="login-panel login-panel-glow w-full overflow-hidden rounded-[2rem] border-white/70 bg-white/90">
+      <CardHeader className={cn('space-y-3 p-5 pb-0 sm:p-6 sm:pb-0', isRegisterMode && 'space-y-2')}>
+        <div className="flex items-start justify-between gap-4">
+          <div className={cn(
+            'inline-flex items-center gap-3 rounded-full border border-orange-100 bg-orange-50/90 px-4 py-2 text-sm text-orange-800',
+            isRegisterMode && 'px-3 py-1.5'
+          )}>
+            <div className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 text-white shadow-[0_14px_24px_-18px_rgba(249,115,22,0.85)]',
+              isRegisterMode && 'h-8 w-8 rounded-xl'
+            )}>
+              <ShieldCheck className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">Skill Hub</p>
-              <p className="text-sm font-medium text-white">Access Console</p>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-orange-500">Secure Entry</p>
+              <p className="font-medium text-slate-900">Access Portal</p>
             </div>
           </div>
-          <div className="hidden rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100 sm:block">
-            已启用安全验证
+
+          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+            {isAuthFlow ? '授权流程' : '统一登录'}
           </div>
         </div>
 
-        <div className="space-y-3">
-          <CardTitle className="font-client-serif text-3xl font-bold tracking-tight text-white sm:text-[2.15rem]">
-            {isOAuthFlow ? '继续授权此应用' : isDesktopAuthFlow ? '继续授权桌面端' : '欢迎回到管理入口'}
+        <div className={cn('space-y-3', isRegisterMode && 'space-y-2')}>
+          <CardTitle className={cn(
+            'font-client-serif text-3xl tracking-tight text-slate-950 sm:text-[1.95rem]',
+            isRegisterMode && 'text-[2rem] leading-none sm:text-[2.1rem]'
+          )}>
+            {title}
           </CardTitle>
-          <CardDescription className="max-w-md text-sm leading-6 text-slate-300 sm:text-[15px]">
-            {isAuthFlow
-              ? '登录后即可完成授权，系统会根据申请的权限范围继续跳转到目标应用。'
-              : '使用您的账号进入 Skill 与 MCP 管理系统，继续处理资源、审批与接入流程。'}
+          <CardDescription className={cn(
+            'max-w-[34rem] text-sm leading-6 text-slate-500',
+            isRegisterMode && 'leading-5'
+          )}>
+            {description}
           </CardDescription>
         </div>
 
         {isAuthFlow ? (
-          <div className="rounded-[1.5rem] border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-50">
+          <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50/80 p-4">
             <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" />
+              <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-amber-700" />
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-amber-100/70">授权应用</p>
-                  <p className="mt-1 font-medium text-white">
+                  <p className="text-xs uppercase tracking-[0.2em] text-amber-700/70">授权目标</p>
+                  <p className="mt-1 font-medium text-slate-900">
                     {isDesktopAuthFlow ? '桌面客户端' : oauthClientLabel || oauth.client_id}
                   </p>
                 </div>
                 {redirectHost ? (
-                  <div className="flex items-center gap-2 text-amber-50/80">
-                    <Globe className="h-4 w-4" />
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Globe className="h-4 w-4 text-slate-400" />
                     <span className="truncate">{redirectHost}</span>
                   </div>
                 ) : null}
@@ -182,7 +354,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
                     {scopeTokens.map((scope) => (
                       <span
                         key={scope}
-                        className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-xs text-white/90"
+                        className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs text-slate-700"
                       >
                         {scope}
                       </span>
@@ -192,74 +364,312 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
               </div>
             </div>
           </div>
-        ) : (
-          <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-200 sm:grid-cols-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">统一入口</p>
-              <p className="mt-2 leading-6 text-slate-100">登录后自动进入对应工作台</p>
+        ) : null}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => handleEntryModeChange('consumer')}
+            className={cn(
+              'flex min-h-[72px] cursor-pointer items-start gap-3 rounded-[1.5rem] border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2',
+              isRegisterMode && 'min-h-[64px] p-3.5',
+              entryMode === 'consumer'
+                ? 'border-orange-200 bg-orange-50/90 shadow-[0_18px_36px_-30px_rgba(249,115,22,0.65)]'
+                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+            )}
+          >
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white">
+              <UserRound className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">OAuth</p>
-              <p className="mt-2 leading-6 text-slate-100">兼容授权流程直接跳转</p>
+              <p className="font-medium text-slate-900">普通用户</p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">进入个人工作台，没有账号可直接注册。</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleEntryModeChange('enterprise')}
+            className={cn(
+              'flex min-h-[72px] cursor-pointer items-start gap-3 rounded-[1.5rem] border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2',
+              isRegisterMode && 'min-h-[64px] p-3.5',
+              entryMode === 'enterprise'
+                ? 'border-slate-900 bg-slate-900 text-white shadow-[0_20px_42px_-34px_rgba(15,23,42,0.85)]'
+                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+            )}
+          >
+            <div
+              className={cn(
+                'flex size-10 shrink-0 items-center justify-center rounded-full',
+                entryMode === 'enterprise' ? 'bg-white/10 text-white' : 'bg-slate-900 text-white'
+              )}
+            >
+              <BriefcaseBusiness className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">安全审计</p>
-              <p className="mt-2 leading-6 text-slate-100">面向后台和资源调用场景</p>
+              <p className={cn('font-medium', entryMode === 'enterprise' ? 'text-white' : 'text-slate-900')}>企业用户</p>
+              <p className={cn('mt-1 text-sm leading-6', entryMode === 'enterprise' ? 'text-slate-300' : 'text-slate-500')}>
+                进入企业工作区，账号由管理员统一开通。
+              </p>
             </div>
+          </button>
+        </div>
+
+        {allowRegistration ? (
+          <div className="grid grid-cols-2 gap-2 rounded-full border border-slate-200 bg-slate-50 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setFormMode('login')
+                setError('')
+                setSuccessMessage('')
+                setRegisterEmail('')
+                setVerificationCode('')
+                setVerificationCooldown(0)
+              }}
+              className={cn(
+                'rounded-full px-4 py-2 text-sm font-medium transition-all',
+                formMode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+              )}
+            >
+              登录
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFormMode('register')
+                setError('')
+                setSuccessMessage('')
+              }}
+              className={cn(
+                'rounded-full px-4 py-2 text-sm font-medium transition-all',
+                formMode === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+              )}
+            >
+              注册
+            </button>
           </div>
-        )}
+        ) : null}
       </CardHeader>
-      <CardContent className="p-7 pt-7 sm:p-8 sm:pt-7">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2.5">
-            <Label htmlFor="email" className="text-sm font-medium text-slate-200">邮箱</Label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="name@company.com"
-                className="h-12 rounded-2xl border-white/10 bg-white/[0.04] pl-11 text-white placeholder:text-slate-500 focus-visible:border-amber-300/50 focus-visible:ring-amber-200/20"
-              />
+
+      <CardContent className="p-5 pt-4 sm:p-6 sm:pt-4">
+        <form onSubmit={handleSubmit} className={cn('space-y-4', isRegisterMode && 'space-y-3')}>
+          {isRegisterMode ? (
+            <div className="space-y-3 rounded-[1.6rem] border border-slate-200/80 bg-slate-50/70 p-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Account</p>
+                  <p className="text-sm text-slate-600">基础信息与邮箱验证集中在这里完成。</p>
+                </div>
+                <span className="text-xs text-slate-400">10 分钟内有效</span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-sm font-medium text-slate-700">
+                    昵称
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    required
+                    minLength={2}
+                    maxLength={50}
+                    placeholder="请输入你的昵称"
+                    className="h-11 rounded-2xl border-white bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+                    邮箱
+                  </Label>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={registerEmail}
+                      onChange={(event) => setRegisterEmail(event.target.value)}
+                      className="h-11 rounded-2xl border-white bg-white pl-11 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="verificationCode" className="text-sm font-medium text-slate-700">
+                    邮箱验证码
+                  </Label>
+                  <Input
+                    id="verificationCode"
+                    name="verificationCode"
+                    required
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="请输入 6 位验证码"
+                    value={verificationCode}
+                    onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="h-11 rounded-2xl border-white bg-white text-base tracking-[0.25em] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] placeholder:tracking-normal"
+                  />
+                </div>
+
+                <div className="flex flex-col justify-end rounded-[1.35rem] border border-orange-100 bg-gradient-to-br from-orange-50/95 to-amber-50/75 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600">Verification</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">60 秒后可重新发送。</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSendingVerificationCode || verificationCooldown > 0}
+                    onClick={handleSendVerificationCode}
+                    className="mt-3 h-11 rounded-2xl border-orange-200 bg-white text-slate-800 hover:border-orange-300 hover:bg-orange-50"
+                  >
+                    {isSendingVerificationCode
+                      ? '发送中...'
+                      : verificationCooldown > 0
+                        ? `${verificationCooldown}s 后重发`
+                        : '发送验证码'}
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="space-y-2.5">
-            <Label htmlFor="password" className="text-sm font-medium text-slate-200">密码</Label>
-            <div className="relative">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                placeholder="输入您的登录密码"
-                className="h-12 rounded-2xl border-white/10 bg-white/[0.04] pl-11 text-white placeholder:text-slate-500 focus-visible:border-amber-300/50 focus-visible:ring-amber-200/20"
-              />
+          ) : null}
+
+          {!isRegisterMode ? (
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+                邮箱
+              </Label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder={entryMode === 'enterprise' ? 'name@company.com' : 'name@example.com'}
+                  className="h-11 rounded-2xl border-slate-200 bg-white pl-11"
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
+
+          {isRegisterMode ? (
+            <div className="space-y-3 rounded-[1.6rem] border border-slate-200/80 bg-white p-4 shadow-[0_18px_36px_-32px_rgba(15,23,42,0.3)]">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Security</p>
+                <p className="text-sm text-slate-600">设置至少 8 位密码，用于后续登录。</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                    密码
+                  </Label>
+                  <div className="relative">
+                    <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                      minLength={8}
+                      placeholder="至少 8 位密码"
+                      className="h-11 rounded-2xl border-slate-200 bg-slate-50/50 pl-11"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
+                    确认密码
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    minLength={8}
+                    placeholder="再次输入密码"
+                    className="h-11 rounded-2xl border-slate-200 bg-slate-50/50"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {!isRegisterMode ? (
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                密码
+              </Label>
+              <div className="relative">
+                <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  placeholder="请输入登录密码"
+                  className="h-11 rounded-2xl border-slate-200 bg-white pl-11"
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {successMessage ? (
+            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {successMessage}
+            </p>
+          ) : null}
+
           {error ? (
-            <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               {error}
             </p>
           ) : null}
+
           <Button
             type="submit"
-            className="group h-12 w-full rounded-2xl bg-gradient-to-r from-amber-300 via-amber-200 to-orange-300 text-slate-950 shadow-[0_18px_40px_rgba(251,191,36,0.24)] hover:from-amber-200 hover:via-amber-100 hover:to-orange-200"
-            disabled={isLoading}
+            disabled={isSubmitting}
+            className={cn(
+              'group h-11 w-full rounded-2xl text-sm shadow-[0_22px_40px_-28px_rgba(15,23,42,0.45)]',
+              entryMode === 'enterprise'
+                ? 'bg-slate-900 text-white hover:bg-slate-800'
+                : 'bg-gradient-to-r from-orange-500 via-orange-400 to-amber-300 text-white hover:from-orange-600 hover:via-orange-500 hover:to-amber-400'
+            )}
           >
-            <span>{isLoading ? '处理中...' : isAuthFlow ? '登录并授权' : '进入系统'}</span>
-            {!isLoading ? <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" /> : null}
+            <span>
+              {isSubmitting
+                ? '处理中...'
+                : formMode === 'register'
+                  ? isAuthFlow
+                    ? '注册并继续授权'
+                    : '注册并进入系统'
+                  : isAuthFlow
+                    ? '登录并授权'
+                    : entryMode === 'enterprise'
+                      ? '进入企业工作区'
+                      : '进入个人工作台'}
+            </span>
+            {!isSubmitting ? (
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            ) : null}
           </Button>
         </form>
 
-        <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-5 text-xs leading-5 text-slate-400">
-          <p className="max-w-[15rem]">
-            登录即表示您将按照系统角色权限访问对应资源与功能。
+        <div className={cn(
+          'mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] leading-5 text-slate-400',
+          isRegisterMode && 'mt-3 pt-3'
+        )}>
+          <p className="max-w-[16rem]">
+            登录后将按角色权限访问对应资源。
           </p>
-          <div className="rounded-full border border-white/10 px-3 py-1 text-slate-300">
-            TLS / OAuth / Audit
+          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-500">
+            TLS / OAuth
           </div>
         </div>
       </CardContent>

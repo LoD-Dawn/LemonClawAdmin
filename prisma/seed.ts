@@ -1,19 +1,52 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import {
+  DEFAULT_CONSUMER_ORGANIZATION_ID,
+  DEFAULT_CONSUMER_ORGANIZATION_NAME,
+  DEFAULT_CONSUMER_ORGANIZATION_PATH,
+  ROOT_ORGANIZATION_ID,
+  ROOT_ORGANIZATION_NAME,
+  ROOT_ORGANIZATION_PATH,
+} from '../src/lib/default-organizations'
 
 const prisma = new PrismaClient()
 
 async function main() {
   // Create root organization
   const org = await prisma.organization.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000001' },
-    update: {},
-    create: {
-      id: '00000000-0000-0000-0000-000000000001',
-      name: '总公司',
+    where: { id: ROOT_ORGANIZATION_ID },
+    update: {
+      name: ROOT_ORGANIZATION_NAME,
       type: 'company',
-      path: '/root-company',
+      path: ROOT_ORGANIZATION_PATH,
       level: 0,
+      parentId: null,
+    },
+    create: {
+      id: ROOT_ORGANIZATION_ID,
+      name: ROOT_ORGANIZATION_NAME,
+      type: 'company',
+      path: ROOT_ORGANIZATION_PATH,
+      level: 0,
+    },
+  })
+
+  await prisma.organization.upsert({
+    where: { id: DEFAULT_CONSUMER_ORGANIZATION_ID },
+    update: {
+      name: DEFAULT_CONSUMER_ORGANIZATION_NAME,
+      type: 'department',
+      parentId: org.id,
+      path: DEFAULT_CONSUMER_ORGANIZATION_PATH,
+      level: 1,
+    },
+    create: {
+      id: DEFAULT_CONSUMER_ORGANIZATION_ID,
+      name: DEFAULT_CONSUMER_ORGANIZATION_NAME,
+      type: 'department',
+      parentId: org.id,
+      path: DEFAULT_CONSUMER_ORGANIZATION_PATH,
+      level: 1,
     },
   })
 
@@ -29,6 +62,7 @@ async function main() {
       email: adminEmail,
       passwordHash,
       name: 'Administrator',
+      accountType: 'enterprise',
       organizationId: org.id,
       isSuperAdmin: true,
       isActive: true,
@@ -62,7 +96,7 @@ async function main() {
     },
   })
 
-  console.log('Seed data created')
+  console.log('Seed data created, including default consumer organization')
 }
 
 main()

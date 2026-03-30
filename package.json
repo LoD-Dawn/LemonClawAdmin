@@ -4,7 +4,7 @@
   "author": "xiesenlin",
   "private": true,
   "scripts": {
-    "predev": "prisma generate",
+    "predev": "npm run db:ensure-schema && prisma generate",
     "dev": "next dev",
     "prebuild": "prisma generate",
     "build": "next build",
@@ -13,7 +13,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:ensure-schema": "node prisma/ensure-schema.cjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.0.0",
@@ -32,6 +33,7 @@
     "@radix-ui/react-toast": "^1.2.0",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-table": "^8.21.3",
+    "@types/nodemailer": "^7.0.11",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -40,6 +42,7 @@
     "lucide-react": "^0.460.0",
     "next": "^15.0.0",
     "next-auth": "^5.0.0-beta.25",
+    "nodemailer": "^7.0.13",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.71.2",

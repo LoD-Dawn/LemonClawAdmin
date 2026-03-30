@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireApiAuth } from '@/middleware/api-auth'
 import { db } from '@/lib/db'
+import { DEFAULT_CONSUMER_ORGANIZATION_ID } from '@/lib/default-organizations'
 import { z } from 'zod'
 import { recordOperationLog } from '@/lib/operation-log'
 
@@ -101,9 +102,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     )
   }
 
-  if (organization.type === 'company') {
+  if (organization.type === 'company' || organization.id === DEFAULT_CONSUMER_ORGANIZATION_ID) {
     return NextResponse.json(
-      { error: 'Company organization cannot be deleted', code: 'CONFLICT_PROTECTED_COMPANY_ORG' },
+      {
+        error: organization.id === DEFAULT_CONSUMER_ORGANIZATION_ID
+          ? 'Default consumer organization cannot be deleted'
+          : 'Company organization cannot be deleted',
+        code: organization.id === DEFAULT_CONSUMER_ORGANIZATION_ID
+          ? 'CONFLICT_PROTECTED_CONSUMER_ORG'
+          : 'CONFLICT_PROTECTED_COMPANY_ORG',
+      },
       { status: 409 }
     )
   }

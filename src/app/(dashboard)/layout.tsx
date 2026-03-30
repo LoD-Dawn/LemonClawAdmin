@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { resolveUserLoginEntryMode } from '@/lib/default-organizations'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +14,11 @@ export default async function DashboardLayout({
   const session = await auth()
 
   if (!session?.user) {
-    redirect('/login')
+    redirect('/login?callbackUrl=%2Fdashboard&entryMode=enterprise')
+  }
+
+  if (resolveUserLoginEntryMode(session.user) === 'consumer') {
+    redirect('/client')
   }
 
   return (

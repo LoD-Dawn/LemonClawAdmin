@@ -1,11 +1,14 @@
 import { db } from '@/lib/db'
-
-const DEFAULT_PRICING_VERSION = '2026-03-v2'
+import {
+  DEFAULT_PRICING_VERSION,
+  getEffectiveUserClawCreditBalance,
+} from '@/lib/user-claw-quota-policy'
 
 const adminUserSelect = {
   id: true,
   email: true,
   name: true,
+  accountType: true,
   organizationId: true,
   isSuperAdmin: true,
   isDepartmentAdmin: true,
@@ -65,6 +68,8 @@ function toQuotaSnapshot(
     updatedAt: Date
   } | null
 ) {
+  const creditBalance = getEffectiveUserClawCreditBalance(quota)
+
   if (user.isSuperAdmin || user.isDepartmentAdmin) {
     return {
       isUnlimited: true,
@@ -89,8 +94,8 @@ function toQuotaSnapshot(
 
   return {
     isUnlimited: false,
-    creditBalance: quota.creditBalance,
-    remainingClawSeconds: quota.creditBalance * 60,
+    creditBalance,
+    remainingClawSeconds: creditBalance * 60,
     pricingVersion: quota.pricingVersion,
     expiresAt: quota.expiresAt?.toISOString() ?? null,
     updatedAt: quota.updatedAt.toISOString(),

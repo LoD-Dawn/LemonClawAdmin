@@ -1,3 +1,9 @@
+import {
+  DEFAULT_CONSUMER_ORGANIZATION_ID,
+  type AccountTypeValue,
+  isDefaultConsumerOrganizationId,
+} from '@/lib/default-organizations'
+
 export type UserRoleValue = 'user' | 'department_admin' | 'super_admin'
 
 export type OrganizationOption = {
@@ -7,6 +13,7 @@ export type OrganizationOption = {
 }
 
 export type UserPermissionInput = {
+  accountType?: AccountTypeValue
   organizationId?: string | null
   isSuperAdmin?: boolean
   isDepartmentAdmin?: boolean
@@ -14,6 +21,7 @@ export type UserPermissionInput = {
 }
 
 export type NormalizedUserPermissionInput = {
+  accountType: AccountTypeValue
   organizationId: string | null
   isSuperAdmin: boolean
   isDepartmentAdmin: boolean
@@ -43,8 +51,13 @@ export function isDepartmentOrganization(
 }
 
 export function getAllowedUserRoles(
-  organization: Pick<OrganizationOption, 'type'> | null | undefined
+  organization: Pick<OrganizationOption, 'id' | 'type'> | null | undefined,
+  accountType: AccountTypeValue = 'enterprise'
 ): UserRoleValue[] {
+  if (accountType === 'consumer' || isDefaultConsumerOrganizationId(organization?.id)) {
+    return ['user']
+  }
+
   if (isDepartmentOrganization(organization)) {
     return ['user', 'department_admin']
   }
@@ -54,8 +67,13 @@ export function getAllowedUserRoles(
 
 export function getAssignableDepartments(
   organizations: OrganizationOption[],
-  organizationId: string | null | undefined
+  organizationId: string | null | undefined,
+  accountType: AccountTypeValue = 'enterprise'
 ): OrganizationOption[] {
+  if (accountType === 'consumer') {
+    return []
+  }
+
   const selectedOrganization = getOrganizationById(organizations, organizationId)
 
   if (isDepartmentOrganization(selectedOrganization)) {
@@ -67,8 +85,13 @@ export function getAssignableDepartments(
 
 export function normalizeRoleForOrganization(
   role: UserRoleValue,
-  organization: Pick<OrganizationOption, 'type'> | null | undefined
+  organization: Pick<OrganizationOption, 'id' | 'type'> | null | undefined,
+  accountType: AccountTypeValue = 'enterprise'
 ): UserRoleValue {
+  if (accountType === 'consumer' || isDefaultConsumerOrganizationId(organization?.id)) {
+    return 'user'
+  }
+
   if (isDepartmentOrganization(organization) && role === 'super_admin') {
     return 'user'
   }
@@ -79,12 +102,17 @@ export function normalizeRoleForOrganization(
 export function normalizeUserPermissionInput(
   input: UserPermissionInput
 ): NormalizedUserPermissionInput {
+  const accountType = input.accountType ?? 'enterprise'
   const isSuperAdmin = input.isSuperAdmin ?? false
   const isDepartmentAdmin = isSuperAdmin ? false : (input.isDepartmentAdmin ?? false)
   const departmentId = isSuperAdmin || !isDepartmentAdmin ? null : (input.departmentId ?? null)
+  const organizationId = accountType === 'consumer'
+    ? DEFAULT_CONSUMER_ORGANIZATION_ID
+    : (input.organizationId ?? null)
 
   return {
-    organizationId: input.organizationId ?? null,
+    accountType,
+    organizationId,
     isSuperAdmin,
     isDepartmentAdmin,
     departmentId,
@@ -139,6 +167,43 @@ export function validateUserPermissionScope({
     return {
       error: '部门管理员只能管理自己的部门',
       code: 'VALIDATION_DEPARTMENT_SCOPE_MISMATCH',
+    }
+  }
+
+  if (isDefaultConsumerOrganizationId(data.organizationId)) {
+    if (data.accountType !== 'consumer') {
+      return {
+        error: '默认普通用户组织只能用于普通用户账号',
+        code: 'VALIDATION_CONSUMER_ORG_ACCOUNT_TYPE_REQUIRED',
+      }
+    }
+
+    if (data.isSuperAdmin || data.isDepartmentAdmin) {
+      return {
+        error: '默认普通用户组织下的账号只能是普通员工',
+        code: 'VALIDATION_CONSUMER_ORG_ROLE_FORBIDDEN',
+      }
+    }
+
+    if (data.departmentId) {
+      return {
+        error: '默认普通用户组织下的账号不能配置管理部门',
+        code: 'VALIDATION_CONSUMER_ORG_DEPARTMENT_FORBIDDEN',
+      }
+    }
+  }
+
+  if (data.accountType === 'consumer' && data.organizationId !== DEFAULT_CONSUMER_ORGANIZATION_ID) {
+    return {
+      error: '普通用户账号必须归属默认普通用户组织',
+      code: 'VALIDATION_CONSUMER_ACCOUNT_ORG_REQUIRED',
+    }
+  }
+
+  if (data.accountType === 'enterprise' && isDefaultConsumerOrganizationId(data.organizationId)) {
+    return {
+      error: '企业账号不能归属默认普通用户组织',
+      code: 'VALIDATION_ENTERPRISE_ACCOUNT_CONSUMER_ORG_FORBIDDEN',
     }
   }
 

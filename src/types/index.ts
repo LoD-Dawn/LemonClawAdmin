@@ -1,9 +1,11 @@
 import { DefaultSession } from 'next-auth'
+import type { AccountTypeValue } from '@/lib/default-organizations'
 
 declare module 'next-auth' {
   interface Session {
     user: {
       id: string
+      accountType: AccountTypeValue
       isSuperAdmin: boolean
       organizationId: string | null
       isDepartmentAdmin: boolean

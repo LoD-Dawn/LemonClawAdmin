@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { ChevronRight, ChevronDown, Building2, Users, Pencil, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
+import { isDefaultConsumerOrganizationId } from '@/lib/default-organizations'
 
 interface Organization {
   id: string
@@ -53,6 +54,15 @@ export function OrganizationTree({ organizations }: { organizations: Organizatio
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!parentId) {
+      toast({
+        title: '无法创建',
+        description: '请从现有组织节点进入，仅允许创建子组织。',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -115,6 +125,11 @@ export function OrganizationTree({ organizations }: { organizations: Organizatio
   }
 
   const handleDelete = async (org: Organization) => {
+    if (isDefaultConsumerOrganizationId(org.id)) {
+      toast({ title: '无法删除', description: '默认普通用户组织是系统初始化节点，不能删除', variant: 'destructive' })
+      return
+    }
+
     if (org.type === 'company') {
       toast({ title: '无法删除', description: '公司架构不能删除', variant: 'destructive' })
       return
@@ -149,8 +164,9 @@ export function OrganizationTree({ organizations }: { organizations: Organizatio
     const hasChildren = children.length > 0
     const isExpanded = expanded.has(org.id)
     const isCompany = org.type === 'company'
+    const isDefaultConsumerOrg = isDefaultConsumerOrganizationId(org.id)
     const hasMembers = org._count.users > 0 || org._count.departmentUsers > 0
-    const deleteDisabled = deletingId === org.id || hasChildren || isCompany || hasMembers
+    const deleteDisabled = deletingId === org.id || hasChildren || isCompany || isDefaultConsumerOrg || hasMembers
     const typeLabel = org.type === 'company' ? '公司' : org.type === 'department' ? '部门' : '小组'
     const typeVariant = org.type === 'company' ? 'default' : org.type === 'department' ? 'secondary' : 'outline'
 
@@ -181,6 +197,9 @@ export function OrganizationTree({ organizations }: { organizations: Organizatio
               <div className="flex flex-wrap items-center gap-2">
                 <span className="truncate font-semibold text-slate-900">{org.name}</span>
                 <Badge variant={typeVariant}>{typeLabel}</Badge>
+                {isDefaultConsumerOrg ? (
+                  <Badge variant="outline">默认普通用户组织</Badge>
+                ) : null}
                 {hasChildren ? (
                   <span className="text-xs text-slate-400">包含 {children.length} 个下级节点</span>
                 ) : null}
@@ -218,7 +237,12 @@ export function OrganizationTree({ organizations }: { organizations: Organizatio
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
               删除
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { setParentId(org.id); setDialogOpen(true) }}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setParentId(org.id); setDialogOpen(true) }}
+              disabled={isDefaultConsumerOrg}
+            >
               添加子组织
             </Button>
           </div>
@@ -239,47 +263,9 @@ export function OrganizationTree({ organizations }: { organizations: Organizatio
           <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">结构视图</div>
           <h2 className="text-xl font-semibold tracking-tight text-slate-900">组织树维护</h2>
           <p className="text-sm leading-6 text-slate-600">
-            当前共有 {organizations.length} 个组织节点，累计关联 {totalUsers} 位成员。支持直接增删改并维护层级关系。
+            当前共有 {organizations.length} 个组织节点，累计关联 {totalUsers} 位成员。仅允许从现有节点继续创建子组织。
           </p>
         </div>
-
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>添加组织</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>添加组织</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>名称</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label>类型</Label>
-                <Select value={type} onValueChange={(value) => setType(value as 'company' | 'department' | 'team')}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择组织类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="company">公司</SelectItem>
-                    <SelectItem value="department">部门</SelectItem>
-                    <SelectItem value="team">小组</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                  取消
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? '创建中...' : '创建'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <div className="admin-surface p-4 sm:p-5">
@@ -287,6 +273,51 @@ export function OrganizationTree({ organizations }: { organizations: Organizatio
           {rootOrgs.map(org => renderOrg(org))}
         </div>
       </div>
+
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open)
+          if (!open) {
+            setName('')
+            setType('department')
+            setParentId(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>添加子组织</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>名称</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label>类型</Label>
+              <Select value={type} onValueChange={(value) => setType(value as 'company' | 'department' | 'team')}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择组织类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="company">公司</SelectItem>
+                  <SelectItem value="department">部门</SelectItem>
+                  <SelectItem value="team">小组</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                取消
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? '创建中...' : '创建'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>

@@ -22,6 +22,7 @@ interface ClientSidebarProps {
     name?: string | null
     email?: string | null
     image?: string | null
+    accountType?: 'consumer' | 'enterprise'
     isSuperAdmin: boolean
     isDepartmentAdmin: boolean
     organizationName?: string | null
@@ -51,7 +52,9 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
     ? '超级管理员'
     : user.isDepartmentAdmin
       ? '部门管理员'
-      : '客户端用户'
+      : user.accountType === 'enterprise'
+        ? '企业成员'
+        : '普通用户'
 
   return (
     <aside className="relative flex w-full flex-col overflow-hidden border-b border-slate-800/40 bg-slate-950 text-slate-50 lg:min-h-screen lg:w-[276px] lg:border-b-0 lg:border-r">

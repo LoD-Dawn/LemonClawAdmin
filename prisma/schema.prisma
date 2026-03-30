@@ -37,6 +37,11 @@ enum OperationActorType {
   system
 }
 
+enum AccountType {
+  consumer
+  enterprise
+}
+
 model Organization {
   id        String   @id @default(uuid())
   name      String
@@ -64,6 +69,7 @@ model User {
   email          String   @unique
   passwordHash   String   @map("password_hash")
   name           String
+  accountType    AccountType @default(enterprise) @map("account_type")
   organizationId String?  @map("organization_id")
   isSuperAdmin   Boolean  @default(false) @map("is_super_admin")
   isActive       Boolean  @default(true) @map("is_active")
@@ -89,6 +95,22 @@ model User {
   externalApiIdempotencyRecords ExternalApiIdempotency[]
 
   @@map("users")
+}
+
+model EmailVerificationCode {
+  id         String   @id @default(uuid())
+  email      String
+  purpose    String
+  codeHash   String   @map("code_hash")
+  expiresAt  DateTime @map("expires_at")
+  lastSentAt DateTime @map("last_sent_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([email, purpose])
+  @@index([expiresAt])
+  @@map("email_verification_codes")
 }
 
 model OperationLog {

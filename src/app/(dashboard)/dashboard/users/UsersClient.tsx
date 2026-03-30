@@ -9,6 +9,7 @@ interface User {
   id: string
   name: string
   email: string
+  accountType: 'consumer' | 'enterprise'
   isSuperAdmin: boolean
   isDepartmentAdmin: boolean
   isActive: boolean
