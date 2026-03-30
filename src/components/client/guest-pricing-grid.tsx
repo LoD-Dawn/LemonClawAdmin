@@ -67,7 +67,7 @@ export function GuestPricingGrid({ plans, isAuthenticated = false }: GuestPricin
         purchasePlan={selectedPurchasePlan}
       />
 
-      <div id="plans" className="mx-auto mt-12 grid max-w-5xl gap-5 lg:grid-cols-3">
+      <div className="mx-auto mt-12 grid max-w-5xl gap-5 lg:grid-cols-3">
         {plans.map((plan) => {
           const featured = plan.tone === 'featured'
 

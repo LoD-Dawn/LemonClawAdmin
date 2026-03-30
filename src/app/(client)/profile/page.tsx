@@ -255,7 +255,7 @@ export default async function ProfilePage() {
           description: `基础功能已开通，默认赠送 ${SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS} 积分额度，适合体验用户。`,
           badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
           progressClassName: 'bg-slate-900',
-          actionHref: '/client#plans',
+          actionHref: '/client',
           actionLabel: '升级套餐',
           icon: <Sparkles className="h-4 w-4" />,
         }

@@ -126,7 +126,7 @@ function PricingLanding({
             className="rounded-full border border-slate-200 bg-white px-4 text-slate-900 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.35)] hover:bg-white"
             variant="outline"
           >
-            <Link href="#plans">定价</Link>
+            <Link href="/client">定价</Link>
           </Button>
           <Button asChild variant="ghost" className="rounded-full px-4 text-slate-600 hover:bg-white/80">
             <Link href="/docs">
