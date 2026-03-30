@@ -65,7 +65,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
   }
 
   const requestedCallbackUrl = searchParams.get('callbackUrl')
-  const callbackUrl = requestedCallbackUrl || (entryMode === 'enterprise' ? '/dashboard' : '/client')
+  const callbackUrl = requestedCallbackUrl || (entryMode === 'enterprise' ? '/dashboard' : '/profile')
   const hasRedirectUri = !!oauth.redirect_uri
   const isOAuthFlow = !!oauth.client_id
   const isDesktopAuthFlow = hasRedirectUri && !oauth.client_id

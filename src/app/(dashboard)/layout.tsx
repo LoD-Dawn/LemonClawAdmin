@@ -18,7 +18,7 @@ export default async function DashboardLayout({
   }
 
   if (resolveUserLoginEntryMode(session.user) === 'consumer') {
-    redirect('/client')
+    redirect('/profile')
   }
 
   return (

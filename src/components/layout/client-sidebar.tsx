@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { ArrowUpRight, Cpu, Layers3, LogOut, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, Cpu, Home, Layers3, LogOut, ShieldCheck, UserRound } from 'lucide-react'
 
 interface ClientSidebarProps {
   user: {
@@ -32,16 +32,30 @@ interface ClientSidebarProps {
 export function ClientSidebar({ user }: ClientSidebarProps) {
   const pathname = usePathname()
   const canManage = user.isSuperAdmin || user.isDepartmentAdmin
-  const navItems = canManage
-    ? [
-        {
-          href: '/dashboard',
-          label: '管理控制台',
-          description: '处理审批、授权与资源维护',
-          icon: ShieldCheck,
-        },
-      ]
-    : []
+  const navItems = [
+    {
+      href: '/profile',
+      label: '个人概览',
+      description: '查看额度、最近调用与账号信息',
+      icon: UserRound,
+    },
+    {
+      href: '/client',
+      label: '资源首页',
+      description: '浏览已开通资源与可申请能力',
+      icon: Home,
+    },
+    ...(canManage
+      ? [
+          {
+            href: '/dashboard',
+            label: '管理控制台',
+            description: '处理审批、授权与资源维护',
+            icon: ShieldCheck,
+          },
+        ]
+      : []),
+  ]
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U'
@@ -98,53 +112,49 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
           </p>
         </div>
 
-        {navItems.length > 0 && (
-          <>
-            <nav className="overflow-x-auto pb-1 lg:flex-1">
-              <div className="flex gap-3 lg:flex-col">
-                {navItems.map((item) => {
-                  const Icon = item.icon
-                  const isActive = pathname === item.href
+        <nav className="overflow-x-auto pb-1 lg:flex-1">
+          <div className="flex gap-3 lg:flex-col">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
 
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        'group min-w-[220px] rounded-[22px] border px-4 py-4 transition-all duration-200 lg:min-w-0',
-                        isActive
-                          ? 'border-sky-300/30 bg-sky-300/12 text-white shadow-[0_18px_40px_-30px_rgba(125,211,252,0.75)]'
-                          : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/8'
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8">
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{item.label}</p>
-                            <p className="mt-1 text-xs leading-5 text-slate-400 group-hover:text-slate-300">
-                              {item.description}
-                            </p>
-                          </div>
-                        </div>
-                        <ArrowUpRight
-                          className={cn(
-                            'mt-1 h-4 w-4 transition-transform duration-200',
-                            isActive ? 'text-sky-200' : 'text-slate-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5'
-                          )}
-                        />
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    'group min-w-[220px] rounded-[22px] border px-4 py-4 transition-all duration-200 lg:min-w-0',
+                    isActive
+                      ? 'border-sky-300/30 bg-sky-300/12 text-white shadow-[0_18px_40px_-30px_rgba(125,211,252,0.75)]'
+                      : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/8'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8">
+                        <Icon className="h-4 w-4" />
                       </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </nav>
+                      <div>
+                        <p className="font-medium">{item.label}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-400 group-hover:text-slate-300">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowUpRight
+                      className={cn(
+                        'mt-1 h-4 w-4 transition-transform duration-200',
+                        isActive ? 'text-sky-200' : 'text-slate-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5'
+                      )}
+                    />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </nav>
 
-            <Separator className="border-white/10" />
-          </>
-        )}
+        <Separator className="border-white/10" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
