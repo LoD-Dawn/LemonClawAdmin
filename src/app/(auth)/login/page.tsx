@@ -55,8 +55,13 @@ export default function LoginPage() {
                 <Image src="/images/Logo.png" alt="LemonClaw logo" fill sizes="40px" className="object-cover" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-900">LemonClaw</p>
-                <p className="text-xs text-slate-500">统一资源与企业访问入口</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">LemonClaw</p>
+                  <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium leading-none text-orange-700">
+                    v0.2.3
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">柠檬虾</p>
               </div>
             </Link>
 
@@ -100,7 +105,7 @@ export default function LoginPage() {
           </main>
 
           <footer className="pt-2 text-center text-[11px] text-slate-400 lg:hidden">
-            LemonClaw Admin Portal · 普通用户注册与企业访问统一登录页
+            柠檬虾 LemonClaw · 普通用户注册与企业访问统一登录页
           </footer>
         </div>
       </div>

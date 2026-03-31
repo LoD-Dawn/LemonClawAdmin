@@ -122,8 +122,13 @@ function PricingLanding({
             />
           </div>
           <div>
-            <p className="text-base font-semibold text-slate-950">LemonClaw</p>
-            <p className="text-xs text-slate-500">统一资源入口</p>
+            <div className="flex items-center gap-2">
+              <p className="text-base font-semibold text-slate-950">LemonClaw</p>
+              <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium leading-none text-orange-700">
+                v0.2.3
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">柠檬虾</p>
           </div>
         </div>
 
@@ -136,8 +141,8 @@ function PricingLanding({
             <Link href="/client">定价</Link>
           </Button>
           <Button asChild variant="ghost" className="rounded-full px-4 text-slate-600 hover:bg-white/80">
-            <Link href="/docs">
-              文档
+            <Link href="http://114.132.74.2:3001" target="_blank" rel="noreferrer">
+              官网
               <ExternalLink className="ml-2 h-4 w-4" />
             </Link>
           </Button>
