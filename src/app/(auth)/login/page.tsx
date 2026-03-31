@@ -1,25 +1,7 @@
 import { Suspense } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { LoginFormClient } from '@/components/auth/login-form-client'
-import { ShieldCheck, Sparkles } from 'lucide-react'
-
-const featureList = [
-  {
-    icon: Sparkles,
-    title: '普通用户可直接进入',
-    description: '登录后直达资源工作台，没有账号时也能在右侧直接注册。',
-  },
-  {
-    icon: ShieldCheck,
-    title: '企业账号统一访问',
-    description: '企业成员使用统一账号进入管理工作区，继续处理审批和组织配置。',
-  },
-]
-
-const highlightPills = [
-  '普通用户可在线注册',
-  '企业用户统一入口',
-]
 
 function LoginSkeleton() {
   return (
@@ -65,7 +47,10 @@ export default function LoginPage() {
 
         <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-6 py-5 sm:px-8 lg:h-screen lg:px-10 lg:py-3 xl:px-12">
           <header className="flex items-center justify-between gap-4 py-2">
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/80 bg-white/80 px-4 py-2 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.5)] backdrop-blur">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-3 rounded-full border border-white/80 bg-white/80 px-4 py-2 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.5)] backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2"
+            >
               <div className="relative h-10 w-10 overflow-hidden rounded-2xl bg-[#fff] shadow-[0_16px_24px_-18px_rgba(249,115,22,0.85)]">
                 <Image src="/images/Logo.png" alt="LemonClaw logo" fill sizes="40px" className="object-cover" />
               </div>
@@ -73,7 +58,7 @@ export default function LoginPage() {
                 <p className="text-sm font-semibold text-slate-900">LemonClaw</p>
                 <p className="text-xs text-slate-500">统一资源与企业访问入口</p>
               </div>
-            </div>
+            </Link>
 
             <div className="hidden rounded-full border border-amber-200 bg-amber-50/90 px-4 py-2 text-sm text-amber-800 lg:block">
               Dual Entry Access
@@ -82,53 +67,29 @@ export default function LoginPage() {
 
           <main className="flex flex-1 items-center py-4 lg:min-h-0 lg:py-3">
             <div className="grid w-full items-center gap-8 lg:grid-cols-[360px_620px] lg:justify-between lg:gap-10 xl:grid-cols-[390px_640px]">
-              <section className="space-y-4 lg:max-w-[24rem] lg:justify-self-start">
-                <div className="space-y-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-4 py-2 text-sm text-slate-600 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.42)] backdrop-blur">
-                    <span className="h-2 w-2 rounded-full bg-orange-500" />
-                    普通用户与企业用户双登录入口
+              <section className="space-y-6 lg:max-w-[28rem] lg:justify-self-start">
+                <div className="space-y-4">
+                  <div className="inline-flex rounded-full border border-white/80 bg-white/75 px-4 py-2 text-sm font-semibold tracking-[0.12em] text-slate-800 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.42)] backdrop-blur">
+                    LemonClawAI
                   </div>
 
-                  <div className="max-w-lg space-y-2.5">
-                    <h1 className="font-client-serif text-4xl leading-[1.05] text-slate-950 sm:text-5xl xl:text-[4.15rem]">
-                      登录入口
+                  <div className="max-w-xl space-y-3">
+                    <h1 className="font-client-serif text-4xl leading-[1.08] text-slate-950 sm:text-5xl xl:text-[3.9rem]">
+                      一个7×24小时帮你干活的
+                      <br />
+                      全场景个人助理 Agent
                     </h1>
-                    <p className="max-w-md text-[15px] leading-6 text-slate-600">
-                      左侧保留最少说明，主要操作集中在右侧，尽量首屏完成登录。
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    {highlightPills.map((pill) => (
-                      <div
-                        key={pill}
-                        className="rounded-full border border-white/80 bg-white/75 px-4 py-2 text-sm text-slate-700 shadow-[0_10px_26px_-24px_rgba(15,23,42,0.48)]"
-                      >
-                        {pill}
-                      </div>
-                    ))}
+                    <div className="space-y-3 pt-2 text-[15px] leading-7 text-slate-700">
+                      <p>直接交付结果，从想法到落地</p>
+                      <p>本地安全运行，数据留在本地</p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid gap-3">
-                  {featureList.map((item) => {
-                    const Icon = item.icon
-
-                    return (
-                      <div
-                        key={item.title}
-                        className="login-info-card flex items-start gap-4 rounded-[2rem] p-4"
-                      >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-300 text-white shadow-[0_16px_30px_-22px_rgba(249,115,22,0.85)]">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <h2 className="text-base font-semibold text-slate-950">{item.title}</h2>
-                          <p className="mt-1 text-sm leading-6 text-slate-600">{item.description}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="rounded-[2rem] border border-white/80 bg-white/70 px-6 py-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.38)] backdrop-blur">
+                  <p className="text-lg font-semibold tracking-[0.08em] text-slate-900">
+                    7×24小时超级个人助理
+                  </p>
                 </div>
               </section>
 

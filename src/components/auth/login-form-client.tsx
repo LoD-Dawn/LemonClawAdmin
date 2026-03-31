@@ -371,7 +371,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
             type="button"
             onClick={() => handleEntryModeChange('consumer')}
             className={cn(
-              'flex min-h-[72px] cursor-pointer items-start gap-3 rounded-[1.5rem] border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2',
+              'flex min-h-[72px] cursor-pointer items-center gap-3 rounded-[1.5rem] border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2',
               isRegisterMode && 'min-h-[64px] p-3.5',
               entryMode === 'consumer'
                 ? 'border-orange-200 bg-orange-50/90 shadow-[0_18px_36px_-30px_rgba(249,115,22,0.65)]'
@@ -383,7 +383,6 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
             </div>
             <div>
               <p className="font-medium text-slate-900">普通用户</p>
-              <p className="mt-1 text-sm leading-6 text-slate-500">进入个人工作台，没有账号可直接注册。</p>
             </div>
           </button>
 
@@ -391,7 +390,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
             type="button"
             onClick={() => handleEntryModeChange('enterprise')}
             className={cn(
-              'flex min-h-[72px] cursor-pointer items-start gap-3 rounded-[1.5rem] border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2',
+              'flex min-h-[72px] cursor-pointer items-center gap-3 rounded-[1.5rem] border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2',
               isRegisterMode && 'min-h-[64px] p-3.5',
               entryMode === 'enterprise'
                 ? 'border-slate-900 bg-slate-900 text-white shadow-[0_20px_42px_-34px_rgba(15,23,42,0.85)]'
@@ -408,14 +407,11 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
             </div>
             <div>
               <p className={cn('font-medium', entryMode === 'enterprise' ? 'text-white' : 'text-slate-900')}>企业用户</p>
-              <p className={cn('mt-1 text-sm leading-6', entryMode === 'enterprise' ? 'text-slate-300' : 'text-slate-500')}>
-                进入企业工作区，账号由管理员统一开通。
-              </p>
             </div>
           </button>
         </div>
 
-        {allowRegistration ? (
+        {allowRegistration && !isAuthFlow ? (
           <div className="grid grid-cols-2 gap-2 rounded-full border border-slate-200 bg-slate-50 p-1">
             <button
               type="button"
@@ -455,15 +451,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
       <CardContent className="p-5 pt-4 sm:p-6 sm:pt-4">
         <form onSubmit={handleSubmit} className={cn('space-y-4', isRegisterMode && 'space-y-3')}>
           {isRegisterMode ? (
-            <div className="space-y-3 rounded-[1.6rem] border border-slate-200/80 bg-slate-50/70 p-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Account</p>
-                  <p className="text-sm text-slate-600">基础信息与邮箱验证集中在这里完成。</p>
-                </div>
-                <span className="text-xs text-slate-400">10 分钟内有效</span>
-              </div>
-
+            <div className="space-y-4 rounded-[1.6rem] border border-slate-200/80 bg-slate-50/70 p-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-sm font-medium text-slate-700">
@@ -499,39 +487,69 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="verificationCode" className="text-sm font-medium text-slate-700">
                     邮箱验证码
                   </Label>
-                  <Input
-                    id="verificationCode"
-                    name="verificationCode"
-                    required
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="请输入 6 位验证码"
-                    value={verificationCode}
-                    onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className="h-11 rounded-2xl border-white bg-white text-base tracking-[0.25em] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] placeholder:tracking-normal"
-                  />
+                  <div className="flex gap-3">
+                    <Input
+                      id="verificationCode"
+                      name="verificationCode"
+                      required
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="请输入 6 位验证码"
+                      value={verificationCode}
+                      onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="h-11 flex-1 rounded-2xl border-white bg-white text-base tracking-[0.25em] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] placeholder:tracking-normal"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSendingVerificationCode || verificationCooldown > 0}
+                      onClick={handleSendVerificationCode}
+                      className="h-11 min-w-[148px] rounded-2xl border-orange-200 bg-white px-4 text-slate-800 hover:border-orange-300 hover:bg-orange-50"
+                    >
+                      {isSendingVerificationCode
+                        ? '发送中...'
+                        : verificationCooldown > 0
+                          ? `${verificationCooldown}s`
+                          : '发送验证码'}
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex flex-col justify-end rounded-[1.35rem] border border-orange-100 bg-gradient-to-br from-orange-50/95 to-amber-50/75 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600">Verification</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">60 秒后可重新发送。</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSendingVerificationCode || verificationCooldown > 0}
-                    onClick={handleSendVerificationCode}
-                    className="mt-3 h-11 rounded-2xl border-orange-200 bg-white text-slate-800 hover:border-orange-300 hover:bg-orange-50"
-                  >
-                    {isSendingVerificationCode
-                      ? '发送中...'
-                      : verificationCooldown > 0
-                        ? `${verificationCooldown}s 后重发`
-                        : '发送验证码'}
-                  </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                    密码
+                  </Label>
+                  <div className="relative">
+                    <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                      minLength={8}
+                      placeholder="至少 8 位密码"
+                      className="h-11 rounded-2xl border-slate-200 bg-white pl-11"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
+                    确认密码
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    minLength={8}
+                    placeholder="再次输入密码"
+                    className="h-11 rounded-2xl border-slate-200 bg-white"
+                  />
                 </div>
               </div>
             </div>
@@ -552,50 +570,6 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
                   placeholder={entryMode === 'enterprise' ? 'name@company.com' : 'name@example.com'}
                   className="h-11 rounded-2xl border-slate-200 bg-white pl-11"
                 />
-              </div>
-            </div>
-          ) : null}
-
-          {isRegisterMode ? (
-            <div className="space-y-3 rounded-[1.6rem] border border-slate-200/80 bg-white p-4 shadow-[0_18px_36px_-32px_rgba(15,23,42,0.3)]">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Security</p>
-                <p className="text-sm text-slate-600">设置至少 8 位密码，用于后续登录。</p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-slate-700">
-                    密码
-                  </Label>
-                  <div className="relative">
-                    <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                      minLength={8}
-                      placeholder="至少 8 位密码"
-                      className="h-11 rounded-2xl border-slate-200 bg-slate-50/50 pl-11"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
-                    确认密码
-                  </Label>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    minLength={8}
-                    placeholder="再次输入密码"
-                    className="h-11 rounded-2xl border-slate-200 bg-slate-50/50"
-                  />
-                </div>
               </div>
             </div>
           ) : null}
@@ -646,14 +620,8 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
               {isSubmitting
                 ? '处理中...'
                 : formMode === 'register'
-                  ? isAuthFlow
-                    ? '注册并继续授权'
-                    : '注册并进入系统'
-                  : isAuthFlow
-                    ? '登录并授权'
-                    : entryMode === 'enterprise'
-                      ? '进入企业工作区'
-                      : '进入个人工作台'}
+                  ? '注册'
+                  : '登录'}
             </span>
             {!isSubmitting ? (
               <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
