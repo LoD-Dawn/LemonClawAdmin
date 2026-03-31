@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
+import Image from 'next/image'
 import { LoginFormClient } from '@/components/auth/login-form-client'
-import { Building2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ShieldCheck, Sparkles } from 'lucide-react'
 
 const featureList = [
   {
@@ -65,8 +66,8 @@ export default function LoginPage() {
         <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-6 py-5 sm:px-8 lg:h-screen lg:px-10 lg:py-3 xl:px-12">
           <header className="flex items-center justify-between gap-4 py-2">
             <div className="inline-flex items-center gap-3 rounded-full border border-white/80 bg-white/80 px-4 py-2 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.5)] backdrop-blur">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 text-white shadow-[0_16px_24px_-18px_rgba(249,115,22,0.85)]">
-                <Building2 className="h-4 w-4" />
+              <div className="relative h-10 w-10 overflow-hidden rounded-2xl bg-[rgb(255,228,196)] shadow-[0_16px_24px_-18px_rgba(249,115,22,0.85)]">
+                <Image src="/images/Logo.png" alt="LemonClaw logo" fill sizes="40px" className="object-cover" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">LemonClaw</p>

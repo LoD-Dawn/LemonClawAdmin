@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -6,7 +7,6 @@ import { GuestPricingGrid } from '@/components/client/guest-pricing-grid'
 import { PricingHeaderAuthActions } from '@/components/client/pricing-header-auth-actions'
 import {
   BrainCircuit,
-  Building2,
   CircuitBoard,
   ExternalLink,
   LogIn,
@@ -111,8 +111,15 @@ function PricingLanding({
     <div className="space-y-10">
       <header className="flex flex-col gap-4 rounded-[2rem] border border-white/75 bg-white/70 px-5 py-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.28)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 text-white shadow-[0_16px_24px_-18px_rgba(249,115,22,0.85)]">
-            <Building2 className="h-5 w-5" />
+          <div className="relative h-11 w-11 overflow-hidden rounded-2xl border border-orange-100/80 bg-[rgb(255,228,196)] shadow-[0_16px_24px_-18px_rgba(249,115,22,0.85)]">
+            <Image
+              src="/images/Logo.png"
+              alt="LemonClaw logo"
+              fill
+              priority
+              sizes="44px"
+              className="object-cover"
+            />
           </div>
           <div>
             <p className="text-base font-semibold text-slate-950">LemonClaw</p>
