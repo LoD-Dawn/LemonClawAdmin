@@ -5,6 +5,11 @@ import { Toaster } from '@/components/ui/toaster'
 export const metadata: Metadata = {
   title: 'LemonClaw',
   description: '集中管理 Skill 和 MCP 配置',
+  icons: {
+    icon: '/images/Logo.png',
+    shortcut: '/images/Logo.png',
+    apple: '/images/Logo.png',
+  },
 }
 
 export default function RootLayout({
