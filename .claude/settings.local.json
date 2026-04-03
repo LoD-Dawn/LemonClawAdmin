@@ -35,7 +35,10 @@
       "Bash(node:*)",
       "Bash(npm list:*)",
       "Bash(DATABASE_URL=\"libsql://forestxie-forestxiecode.aws-us-east-1.turso.io?authToken=eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQzNjYyNjksImlkIjoiMDE5ZDIwNzgtNWEwMS03MTc2LTlmZTktMjU5ODYyYmU1YzMzIiwicmlkIjoiYmYyNjFkYTQtYjFkNy00YzQ2LTgxNTktNTViZGRiM2RiMGFkIn0.RuTjn8tc5wX-VGXZs1qhg_QDgfvR7rsToLspNi3q638OUe8oUnLyWEh5rgEBSk6PUVX7lEK46xOxBprz5NQaBg\" npx prisma:*)",
-      "Bash(DATABASE_URL=\"libsql://forestxie-forestxiecode.aws-us-east-1.turso.io?authToken=eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQzNjYyNjksImlkIjoiMDE5ZDIwNzgtNWEwMS03MTc2LTlmZTktMjU5ODYyYmU1YzMzIiwicmlkIjoiYmYyNjFkYTQtYjFkNy00YzQ2LTgxNTktNTViZGRiM2RiMGFkIn0.RuTjn8tc5wX-VGXZs1qhg_QDgfvR7rsToLspNi3q638OUe8oUnLyWEh5rgEBSk6PUVX7lEK46xOxBprz5NQaBg\" ADMIN_EMAIL=\"admin@local.com\" ADMIN_PASSWORD=\"admin123\" npx tsx:*)"
+      "Bash(DATABASE_URL=\"libsql://forestxie-forestxiecode.aws-us-east-1.turso.io?authToken=eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQzNjYyNjksImlkIjoiMDE5ZDIwNzgtNWEwMS03MTc2LTlmZTktMjU5ODYyYmU1YzMzIiwicmlkIjoiYmYyNjFkYTQtYjFkNy00YzQ2LTgxNTktNTViZGRiM2RiMGFkIn0.RuTjn8tc5wX-VGXZs1qhg_QDgfvR7rsToLspNi3q638OUe8oUnLyWEh5rgEBSk6PUVX7lEK46xOxBprz5NQaBg\" ADMIN_EMAIL=\"admin@local.com\" ADMIN_PASSWORD=\"admin123\" npx tsx:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx next:*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

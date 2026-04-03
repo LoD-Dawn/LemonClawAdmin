@@ -55,15 +55,15 @@ export function SwaggerUiShell() {
     <div className={styles.page}>
       <link
         rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"
+        href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"
       />
       <Script
-        src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"
+        src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"
         strategy="afterInteractive"
         onLoad={() => setBundleReady(true)}
       />
       <Script
-        src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"
+        src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"
         strategy="afterInteractive"
         onLoad={() => setPresetReady(true)}
       />
