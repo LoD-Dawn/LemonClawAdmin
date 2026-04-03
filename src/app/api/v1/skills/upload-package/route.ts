@@ -3,11 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireManagementAuth } from '@/middleware/admin-only'
 import { resolveAdminAccessScope } from '@/lib/admin-access'
-import {
-  getSkillPackageMaxBytes,
-  TencentCosConfigError,
-  uploadSkillPackageToTencentCos,
-} from '@/lib/tencent-cos'
+import { getSkillPackageMaxBytes, uploadSkillPackageToLocal } from '@/lib/local-storage'
 import { recordOperationLog } from '@/lib/operation-log'
 
 export const runtime = 'nodejs'
@@ -129,7 +125,7 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await fileEntry.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
     const contentType = fileEntry.type || 'application/zip'
-    const upload = await uploadSkillPackageToTencentCos({
+    const upload = await uploadSkillPackageToLocal({
       identifier: parsed.data.identifier,
       version: parsed.data.version ?? null,
       visibility,
@@ -165,24 +161,15 @@ export async function POST(request: NextRequest) {
       data: {
         objectKey: upload.objectKey,
         url: upload.url,
-        etag: upload.etag,
-        location: upload.location,
         fileName: fileEntry.name,
         size: fileEntry.size,
       },
     })
   } catch (error) {
-    if (error instanceof TencentCosConfigError) {
-      return NextResponse.json(
-        { error: error.message, code: 'COS_CONFIG_ERROR' },
-        { status: 500 }
-      )
-    }
-
-    console.error('Failed to upload skill package to Tencent COS', error)
+    console.error('Failed to upload skill package to local storage', error)
 
     return NextResponse.json(
-      { error: 'Failed to upload package to Tencent COS', code: 'COS_UPLOAD_FAILED' },
+      { error: 'Failed to upload package to local storage', code: 'UPLOAD_FAILED' },
       { status: 500 }
     )
   }

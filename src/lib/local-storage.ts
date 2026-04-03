@@ -3,6 +3,24 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
 import { existsSync } from 'node:fs'
 
+const DEFAULT_MAX_PACKAGE_MB = 100
+
+function normalizeOptionalEnv(value: string | undefined) {
+  const normalized = value?.trim()
+  return normalized && normalized.length > 0 ? normalized : null
+}
+
+export function getSkillPackageMaxBytes() {
+  const rawValue = normalizeOptionalEnv(process.env.SKILL_PACKAGE_MAX_MB)
+  const parsed = rawValue ? Number.parseInt(rawValue, 10) : DEFAULT_MAX_PACKAGE_MB
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_MAX_PACKAGE_MB * 1024 * 1024
+  }
+
+  return parsed * 1024 * 1024
+}
+
 type SkillPackageScope = {
   visibility: 'company' | 'department' | 'personal'
   organizationId: string | null
