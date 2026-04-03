@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { resolve, dirname, join } from 'node:path'
+import { resolve, dirname } from 'node:path'
 import { existsSync } from 'node:fs'
 
 type SkillPackageScope = {

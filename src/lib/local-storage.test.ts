@@ -35,4 +35,10 @@ describe('local-storage', () => {
       expect(url).toBe('/api/v1/skills/files/skills/company/org/skill/1.0.0/file.zip')
     })
   })
+
+  describe('getLocalFilePath', () => {
+    it('should prevent path traversal', () => {
+      expect(() => getLocalFilePath('../../../etc/passwd')).toThrow('Invalid file path')
+    })
+  })
 })
