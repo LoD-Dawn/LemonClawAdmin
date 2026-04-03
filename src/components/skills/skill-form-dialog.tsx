@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -42,6 +42,22 @@ const formSchema = z.object({
 function normalizeOptionalField(value: string) {
   const normalized = value.trim()
   return normalized.length > 0 ? normalized : null
+}
+
+function buildPackageUploadSignature(file: File | null, values: Pick<SkillFormValues, 'identifier' | 'version' | 'visibility' | 'organizationId'>) {
+  if (!file) {
+    return null
+  }
+
+  return JSON.stringify({
+    name: file.name,
+    size: file.size,
+    lastModified: file.lastModified,
+    identifier: values.identifier.trim(),
+    version: values.version.trim(),
+    visibility: values.visibility,
+    organizationId: values.visibility === 'personal' ? null : values.organizationId ?? null,
+  })
 }
 
 type SkillFormValues = z.infer<typeof formSchema>
@@ -148,10 +164,16 @@ export function SkillFormDialog({
 }) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [isPackageUploading, setIsPackageUploading] = useState(false)
   const [packageFile, setPackageFile] = useState<File | null>(null)
+  const [uploadedPackageSignature, setUploadedPackageSignature] = useState<string | null>(null)
+  const [uploadedPackageUrl, setUploadedPackageUrl] = useState<string | null>(null)
+  const [isPackageUrlManuallyEdited, setIsPackageUrlManuallyEdited] = useState(false)
   const [tagOptions, setTagOptions] = useState<SkillTagOption[]>([])
   const [isTagsLoading, setIsTagsLoading] = useState(false)
   const packageInputRef = useRef<HTMLInputElement | null>(null)
+  const isMountedRef = useRef(true)
+  const packageUploadRequestIdRef = useRef(0)
   const isEditing = !!skill
   const departmentOnly = managementMode === 'department_admin'
   const personalOnly = managementMode === 'personal'
@@ -174,8 +196,20 @@ export function SkillFormDialog({
   })
 
   useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
     form.reset(toFormValues(skill, departmentOnly, personalOnly, managedDepartmentId))
     setPackageFile(null)
+    setIsPackageUploading(false)
+    setUploadedPackageSignature(null)
+    setUploadedPackageUrl(skill?.packageUrl ?? null)
+    setIsPackageUrlManuallyEdited(false)
+    packageUploadRequestIdRef.current += 1
     if (packageInputRef.current) {
       packageInputRef.current.value = ''
     }
@@ -225,7 +259,17 @@ export function SkillFormDialog({
   }, [open, toast])
 
   const visibility = useWatch({ control: form.control, name: 'visibility' })
+  const identifier = useWatch({ control: form.control, name: 'identifier' })
+  const version = useWatch({ control: form.control, name: 'version' })
+  const organizationId = useWatch({ control: form.control, name: 'organizationId' })
+  const packageUrl = useWatch({ control: form.control, name: 'packageUrl' })
   const isPersonal = visibility === 'personal'
+  const packageUploadSignature = buildPackageUploadSignature(packageFile, {
+    identifier,
+    version,
+    visibility,
+    organizationId,
+  })
 
   const selectedTags = useWatch({ control: form.control, name: 'tags' }) ?? []
   const unknownSelectedTags = selectedTags.filter((tagId) => !tagOptions.some((tag) => tag.id === tagId))
@@ -247,22 +291,31 @@ export function SkillFormDialog({
     form.setValue('tags', nextTags, { shouldDirty: true, shouldValidate: true })
   }
 
-  async function uploadPackageFile(values: SkillFormValues) {
-    if (!packageFile) {
-      return normalizeOptionalField(values.packageUrl)
+  const getPackageUploadBlockedReason = useCallback((values: SkillFormValues) => {
+    if (!values.identifier.trim()) {
+      return '请先填写标识符，再上传 Skill zip'
     }
 
-    if (!values.identifier.trim()) {
-      throw new Error('请先填写标识符，再上传 zip 包')
+    if (values.visibility !== 'personal' && !values.organizationId) {
+      return '请先选择所属组织，再上传 Skill zip'
+    }
+
+    return null
+  }, [])
+
+  const uploadPackageFile = useCallback(async (file: File, values: SkillFormValues) => {
+    const blockedReason = getPackageUploadBlockedReason(values)
+    if (blockedReason) {
+      throw new Error(blockedReason)
     }
 
     const maxBytes = SKILL_PACKAGE_MAX_MB * 1024 * 1024
-    if (packageFile.size > maxBytes) {
+    if (file.size > maxBytes) {
       throw new Error(`zip 文件不能超过 ${SKILL_PACKAGE_MAX_MB}MB`)
     }
 
     const formData = new FormData()
-    formData.set('file', packageFile)
+    formData.set('file', file)
     formData.set('identifier', values.identifier.trim())
     formData.set('version', values.version.trim())
     formData.set('visibility', values.visibility)
@@ -287,17 +340,124 @@ export function SkillFormDialog({
       throw new Error('上传成功但未返回可用地址')
     }
 
-    form.setValue('packageUrl', uploadedUrl, { shouldDirty: true, shouldValidate: true })
     return uploadedUrl
-  }
+  }, [getPackageUploadBlockedReason])
+
+  const applyUploadedPackageUrl = useCallback((signature: string, url: string) => {
+    form.setValue('packageUrl', url, { shouldDirty: true, shouldValidate: true })
+    setUploadedPackageSignature(signature)
+    setUploadedPackageUrl(url)
+    setIsPackageUrlManuallyEdited(false)
+  }, [form])
+
+  const clearSelectedPackage = useCallback(() => {
+    setPackageFile(null)
+    setUploadedPackageSignature(null)
+    setUploadedPackageUrl(skill?.packageUrl ?? null)
+    setIsPackageUrlManuallyEdited(false)
+    packageUploadRequestIdRef.current += 1
+    form.setValue('packageUrl', skill?.packageUrl ?? '', { shouldDirty: true, shouldValidate: true })
+    if (packageInputRef.current) {
+      packageInputRef.current.value = ''
+    }
+  }, [form, skill])
+
+  useEffect(() => {
+    if (!packageFile || !packageUploadSignature || isPackageUploading || isPackageUrlManuallyEdited) {
+      return
+    }
+
+    const file = packageFile
+    const signature = packageUploadSignature
+    const values = form.getValues()
+    if (getPackageUploadBlockedReason(values)) {
+      return
+    }
+    if (uploadedPackageSignature === signature && uploadedPackageUrl === normalizeOptionalField(packageUrl)) {
+      return
+    }
+
+    const requestId = packageUploadRequestIdRef.current + 1
+    packageUploadRequestIdRef.current = requestId
+
+    async function startUpload() {
+      setIsPackageUploading(true)
+      try {
+        const uploadedUrl = await uploadPackageFile(file, values)
+        if (isMountedRef.current && packageUploadRequestIdRef.current === requestId) {
+          applyUploadedPackageUrl(signature, uploadedUrl)
+          toast({
+            title: 'Skill zip 已上传',
+            description: '客户端包地址已自动回填。',
+          })
+        }
+      } catch (error) {
+        if (isMountedRef.current && packageUploadRequestIdRef.current === requestId) {
+          toast({
+            title: '错误',
+            description: error instanceof Error ? error.message : '上传 Skill zip 失败',
+            variant: 'destructive',
+          })
+        }
+      } finally {
+        if (isMountedRef.current && packageUploadRequestIdRef.current === requestId) {
+          setIsPackageUploading(false)
+        }
+      }
+    }
+
+    void startUpload()
+  }, [
+    applyUploadedPackageUrl,
+    form,
+    getPackageUploadBlockedReason,
+    isPackageUploading,
+    isPackageUrlManuallyEdited,
+    packageFile,
+    packageUploadSignature,
+    packageUrl,
+    toast,
+    uploadPackageFile,
+    uploadedPackageSignature,
+    uploadedPackageUrl,
+  ])
 
   async function onSubmit(values: SkillFormValues) {
+    if (isPackageUploading) {
+      toast({
+        title: '请稍候',
+        description: 'Skill zip 还在上传，上传完成后再保存。',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setIsLoading(true)
     const method = isEditing ? 'PUT' : 'POST'
     const url = isEditing ? `/api/v1/skills/${skill.id}` : '/api/v1/skills'
 
     try {
-      const uploadedPackageUrl = await uploadPackageFile(values)
+      let uploadedPackageUrl = normalizeOptionalField(values.packageUrl)
+      const shouldUploadPackage = packageFile
+        && (
+          !uploadedPackageUrl
+          || (!isPackageUrlManuallyEdited && uploadedPackageSignature !== packageUploadSignature)
+        )
+
+      if (packageFile && packageUploadSignature && shouldUploadPackage) {
+        const file = packageFile
+        const signature = packageUploadSignature
+        setIsPackageUploading(true)
+        const requestId = packageUploadRequestIdRef.current + 1
+        packageUploadRequestIdRef.current = requestId
+        const nextUploadedPackageUrl = await uploadPackageFile(file, values)
+        uploadedPackageUrl = nextUploadedPackageUrl
+
+        if (packageUploadRequestIdRef.current === requestId) {
+          applyUploadedPackageUrl(signature, nextUploadedPackageUrl)
+        }
+      }
+
       const payload = {
         name: values.name.trim(),
         identifier: values.identifier.trim(),
@@ -322,7 +482,7 @@ export function SkillFormDialog({
 
       if (res.ok) {
         toast({ title: isEditing ? 'Skill 已更新' : 'Skill 已创建' })
-        setPackageFile(null)
+        clearSelectedPackage()
         onOpenChange(false)
         await onSuccess()
       } else {
@@ -333,9 +493,39 @@ export function SkillFormDialog({
       const description = error instanceof Error ? error.message : '保存失败'
       toast({ title: '错误', description, variant: 'destructive' })
     } finally {
+      setIsPackageUploading(false)
       setIsLoading(false)
     }
   }
+
+  const packageUploadBlockedReason = getPackageUploadBlockedReason(form.getValues())
+  const normalizedPackageUrl = normalizeOptionalField(packageUrl)
+  const isCurrentPackageUploadReady = !!packageFile
+    && !!packageUploadSignature
+    && uploadedPackageSignature === packageUploadSignature
+    && normalizedPackageUrl !== null
+    && uploadedPackageUrl === normalizedPackageUrl
+    && !isPackageUrlManuallyEdited
+  const packageUploadNeedsRefresh = !!packageFile
+    && !!packageUploadSignature
+    && !isPackageUrlManuallyEdited
+    && uploadedPackageSignature !== packageUploadSignature
+  const packageStatusTitle = isPackageUploading
+    ? '正在上传压缩包'
+    : isCurrentPackageUploadReady
+      ? '压缩包已上传'
+      : isPackageUrlManuallyEdited && normalizedPackageUrl
+        ? '已手动覆盖地址'
+        : packageUploadNeedsRefresh
+          ? '压缩包待更新'
+          : packageFile
+            ? '压缩包已选择'
+            : normalizedPackageUrl
+              ? '已配置客户端包地址'
+              : '拖拽或点击上传 zip 包'
+  const packageStatusDescription = packageFile
+    ? `${packageFile.name} · ${(packageFile.size / 1024 / 1024).toFixed(2)} MB`
+    : normalizedPackageUrl ?? '选择 zip 后会自动上传并回填客户端包地址。'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -516,25 +706,30 @@ export function SkillFormDialog({
                         onChange={(event) => {
                           const nextFile = event.target.files?.[0] ?? null
                           setPackageFile(nextFile)
+                          setUploadedPackageSignature(null)
+                          setUploadedPackageUrl(null)
+                          setIsPackageUrlManuallyEdited(false)
+                          packageUploadRequestIdRef.current += 1
+                          form.setValue('packageUrl', '', { shouldDirty: true, shouldValidate: true })
                         }}
-                        disabled={isLoading}
+                        disabled={isLoading || isPackageUploading}
                       />
                     </FormControl>
                     <div className="mt-3 rounded-[22px] border border-dashed border-slate-300 bg-white/90 p-4">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 items-start gap-3">
                           <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
-                            {packageFile ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <UploadCloud className="h-5 w-5" />}
+                            {isPackageUploading ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : isCurrentPackageUploadReady ? (
+                              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                            ) : (
+                              <UploadCloud className="h-5 w-5" />
+                            )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900">
-                              {packageFile ? '压缩包已就绪' : '拖拽或点击上传 zip 包'}
-                            </p>
-                            <p className="mt-1 text-sm leading-6 text-slate-500">
-                              {packageFile
-                                ? `${packageFile.name} · ${(packageFile.size / 1024 / 1024).toFixed(2)} MB`
-                                : '建议先上传正式安装包，再决定是否需要手动覆盖地址。'}
-                            </p>
+                            <p className="text-sm font-semibold text-slate-900">{packageStatusTitle}</p>
+                            <p className="mt-1 text-sm leading-6 text-slate-500">{packageStatusDescription}</p>
                           </div>
                         </div>
                         <div className="flex shrink-0 gap-2">
@@ -543,7 +738,7 @@ export function SkillFormDialog({
                             variant="outline"
                             className="rounded-full"
                             onClick={() => packageInputRef.current?.click()}
-                            disabled={isLoading}
+                            disabled={isLoading || isPackageUploading}
                           >
                             {packageFile ? '重新选择' : '选择文件'}
                           </Button>
@@ -552,13 +747,8 @@ export function SkillFormDialog({
                               type="button"
                               variant="ghost"
                               className="rounded-full text-slate-500 hover:text-slate-900"
-                              onClick={() => {
-                                setPackageFile(null)
-                                if (packageInputRef.current) {
-                                  packageInputRef.current.value = ''
-                                }
-                              }}
-                              disabled={isLoading}
+                              onClick={clearSelectedPackage}
+                              disabled={isLoading || isPackageUploading}
                             >
                               清空
                             </Button>
@@ -567,9 +757,17 @@ export function SkillFormDialog({
                       </div>
                     </div>
                     <FormDescription>
-                      {packageFile
-                        ? `已选择 ${packageFile.name}（${(packageFile.size / 1024 / 1024).toFixed(2)} MB），提交时会先上传到腾讯云 COS。`
-                        : `支持 zip 文件，最大 ${SKILL_PACKAGE_MAX_MB}MB。留空时仍可手动填写客户端包地址。`}
+                      {isPackageUploading
+                        ? '正在上传到本地文件存储，完成后会自动回填到右侧地址框。'
+                        : packageUploadNeedsRefresh
+                          ? packageUploadBlockedReason ?? '检测到标识符、版本或可见范围发生变化，会按最新配置重新上传。'
+                          : isCurrentPackageUploadReady
+                            ? '上传完成，客户端包地址已自动回填；你仍然可以手动覆盖成其他分发链接。'
+                            : isPackageUrlManuallyEdited && normalizedPackageUrl
+                              ? '当前地址已改为手动输入，不会再被自动上传结果覆盖。'
+                              : normalizedPackageUrl
+                                ? '当前使用已有客户端包地址；如需替换，可重新上传或手动修改。'
+                                : packageUploadBlockedReason ?? `支持 zip 文件，最大 ${SKILL_PACKAGE_MAX_MB}MB。留空时仍可手动填写客户端包地址。`}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -580,7 +778,12 @@ export function SkillFormDialog({
                         <Input
                           {...field}
                           placeholder="https://example.com/skills/imap-smtp-email.zip"
-                          disabled={isLoading && !!packageFile}
+                          disabled={isLoading || isPackageUploading}
+                          className="font-mono text-xs"
+                          onChange={(event) => {
+                            field.onChange(event)
+                            setIsPackageUrlManuallyEdited(normalizeOptionalField(event.target.value) !== uploadedPackageUrl)
+                          }}
                         />
                       </FormControl>
                       <FormDescription>
@@ -630,7 +833,7 @@ export function SkillFormDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 取消
               </Button>
-              <Button type="submit" disabled={isLoading} className="min-w-[112px]">
+              <Button type="submit" disabled={isLoading || isPackageUploading} className="min-w-[112px]">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditing ? '保存' : '创建'}
               </Button>
