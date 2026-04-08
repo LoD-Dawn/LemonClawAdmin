@@ -104,32 +104,51 @@ export function UsersTable({
       accessorKey: 'name',
       header: '姓名',
       cell: ({ row }) => (
-        <div>
-          <div className="font-semibold text-slate-900">{row.original.name}</div>
-          <div className="text-xs text-slate-500">{row.original.email}</div>
+        <div className="max-w-[220px]">
+          <div className="truncate font-semibold text-slate-900" title={row.original.name}>
+            {row.original.name}
+          </div>
+          <div className="truncate text-xs text-slate-500" title={row.original.email}>
+            {row.original.email}
+          </div>
         </div>
       ),
     },
     {
       accessorKey: 'email',
       header: '邮箱',
-      cell: ({ row }) => <span className="text-slate-500">{row.original.email}</span>,
+      cell: ({ row }) => (
+        <span className="block max-w-[260px] truncate text-slate-500" title={row.original.email}>
+          {row.original.email}
+        </span>
+      ),
     },
     {
       accessorKey: 'phone',
       header: '手机号',
-      cell: ({ row }) => <span className="text-slate-500">{row.original.phone ?? '-'}</span>,
+      cell: ({ row }) => (
+        <span className="block max-w-[160px] truncate whitespace-nowrap text-slate-500" title={row.original.phone ?? '-'}>
+          {row.original.phone ?? '-'}
+        </span>
+      ),
     },
     {
       accessorKey: 'organization.name',
       header: '组织',
-      cell: ({ row }) => row.original.organization?.name || '-',
+      cell: ({ row }) => {
+        const name = row.original.organization?.name || '-'
+        return (
+          <span className="block max-w-[96px] truncate" title={name}>
+            {name}
+          </span>
+        )
+      },
     },
     {
       accessorKey: 'accountType',
       header: '账号类型',
       cell: ({ row }) => (
-        <Badge variant={row.original.accountType === 'enterprise' ? 'secondary' : 'outline'}>
+        <Badge className="whitespace-nowrap" variant={row.original.accountType === 'enterprise' ? 'secondary' : 'outline'}>
           {ACCOUNT_TYPE_LABELS[row.original.accountType]}
         </Badge>
       ),
@@ -137,7 +156,14 @@ export function UsersTable({
     {
       accessorKey: 'department.name',
       header: '管理范围',
-      cell: ({ row }) => row.original.department?.name || '-',
+      cell: ({ row }) => {
+        const name = row.original.department?.name || '-'
+        return (
+          <span className="block max-w-[96px] truncate" title={name}>
+            {name}
+          </span>
+        )
+      },
     },
     {
       accessorKey: 'clawQuota.creditBalance',
@@ -147,9 +173,11 @@ export function UsersTable({
 
         if (quota?.isUnlimited || row.original.isSuperAdmin || row.original.isDepartmentAdmin) {
           return (
-            <div className="space-y-1">
-              <div className="font-semibold text-slate-900">无限使用</div>
-              <div className="text-xs text-slate-500">管理员角色不受积分配额限制</div>
+            <div className="max-w-[148px] space-y-1">
+              <div className="truncate font-semibold text-slate-900" title="无限使用">无限使用</div>
+              <div className="truncate text-xs text-slate-500" title="管理员角色不受积分配额限制">
+                管理员角色不受积分配额限制
+              </div>
             </div>
           )
         }
@@ -159,10 +187,19 @@ export function UsersTable({
         }
 
         return (
-          <div className="space-y-1">
-            <div className="font-semibold text-slate-900">{quota.creditBalance} 积分</div>
-            <div className="text-xs text-slate-500">剩余约 {formatClawDuration(quota.remainingClawSeconds ?? 0)}</div>
-            <div className="text-[11px] text-slate-400">{quota.pricingVersion}</div>
+          <div className="max-w-[148px] space-y-1">
+            <div className="truncate font-semibold text-slate-900" title={`${quota.creditBalance} 积分`}>
+              {quota.creditBalance} 积分
+            </div>
+            <div
+              className="truncate text-xs text-slate-500"
+              title={`剩余约 ${formatClawDuration(quota.remainingClawSeconds ?? 0)}`}
+            >
+              剩余约 {formatClawDuration(quota.remainingClawSeconds ?? 0)}
+            </div>
+            <div className="truncate text-[11px] text-slate-400" title={quota.pricingVersion}>
+              {quota.pricingVersion}
+            </div>
           </div>
         )
       },
@@ -171,9 +208,17 @@ export function UsersTable({
       accessorKey: 'usageSummary.consumedCredits',
       header: '使用情况',
       cell: ({ row }) => (
-        <div className="space-y-1">
-          <div className="font-medium text-slate-800">已用 {row.original.usageSummary.consumedCredits} 积分</div>
-          <div className="text-xs text-slate-500">
+        <div className="max-w-[148px] space-y-1">
+          <div
+            className="truncate font-medium text-slate-800"
+            title={`已用 ${row.original.usageSummary.consumedCredits} 积分`}
+          >
+            已用 {row.original.usageSummary.consumedCredits} 积分
+          </div>
+          <div
+            className="truncate text-xs text-slate-500"
+            title={`${formatClawDuration(row.original.usageSummary.usedClawSeconds)} · ${row.original.usageSummary.sessions} 次会话`}
+          >
             {formatClawDuration(row.original.usageSummary.usedClawSeconds)} · {row.original.usageSummary.sessions} 次会话
           </div>
         </div>
@@ -184,15 +229,15 @@ export function UsersTable({
       header: '角色',
       cell: ({ row }) => {
         if (row.original.isSuperAdmin) {
-          return <Badge>超级管理员</Badge>
+          return <Badge className="whitespace-nowrap">超级管理员</Badge>
         }
 
         if (row.original.isDepartmentAdmin) {
-          return <Badge variant="secondary">部门管理员</Badge>
+          return <Badge className="whitespace-nowrap" variant="secondary">部门管理员</Badge>
         }
 
         return (
-          <Badge variant="outline">
+          <Badge className="whitespace-nowrap" variant="outline">
             {row.original.accountType === 'consumer' ? '普通用户' : '普通员工'}
           </Badge>
         )
@@ -202,7 +247,7 @@ export function UsersTable({
       accessorKey: 'isActive',
       header: '状态',
       cell: ({ row }) => (
-        <Badge variant={row.original.isActive ? 'default' : 'outline'}>
+        <Badge className="whitespace-nowrap" variant={row.original.isActive ? 'default' : 'outline'}>
           {row.original.isActive ? '启用中' : '已停用'}
         </Badge>
       ),
