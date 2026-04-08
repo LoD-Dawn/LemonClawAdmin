@@ -105,7 +105,7 @@ export default function LoginPage() {
           </main>
 
           <footer className="pt-2 text-center text-[11px] text-slate-400 lg:hidden">
-            柠檬虾 LemonClaw · 普通用户注册与企业访问统一登录页
+            柠檬虾 LemonClaw · 普通用户验证码与企业账号统一登录页
           </footer>
         </div>
       </div>

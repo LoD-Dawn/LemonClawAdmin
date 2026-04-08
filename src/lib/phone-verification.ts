@@ -8,14 +8,17 @@ import {
   SMS_VERIFICATION_CODE_EXPIRES_MINUTES,
   SMS_VERIFICATION_CODE_RESEND_SECONDS,
   sendBindPhoneSmsCode,
+  sendLoginSmsCode,
   sendRegisterSmsCode,
 } from '@/lib/sms'
 
 export const PHONE_VERIFICATION_CODE_LENGTH = 6
+export const PHONE_VERIFICATION_PURPOSE_LOGIN = 'consumer_login'
 export const PHONE_VERIFICATION_PURPOSE_REGISTER = 'consumer_register'
 export const PHONE_VERIFICATION_PURPOSE_BIND = 'consumer_bind_phone'
 
 type PhoneVerificationPurpose =
+  | typeof PHONE_VERIFICATION_PURPOSE_LOGIN
   | typeof PHONE_VERIFICATION_PURPOSE_REGISTER
   | typeof PHONE_VERIFICATION_PURPOSE_BIND
 
@@ -154,6 +157,32 @@ export async function sendRegisterPhoneVerificationCode(phoneInput: string) {
     PHONE_VERIFICATION_PURPOSE_REGISTER,
     new Date(),
     (code) => sendRegisterSmsCode({
+      phone,
+      code,
+      minutes: SMS_VERIFICATION_CODE_EXPIRES_MINUTES,
+    })
+  )
+}
+
+export async function sendLoginPhoneVerificationCode(phoneInput: string) {
+  const phone = normalizePhone(phoneInput)
+  const existingUser = await db.user.findUnique({
+    where: { phone },
+    select: {
+      id: true,
+      accountType: true,
+    },
+  })
+
+  if (existingUser && existingUser.accountType !== 'consumer') {
+    throw new Error('PHONE_LOGIN_NOT_SUPPORTED_FOR_ACCOUNT')
+  }
+
+  return upsertPhoneVerificationCode(
+    phone,
+    PHONE_VERIFICATION_PURPOSE_LOGIN,
+    new Date(),
+    (code) => sendLoginSmsCode({
       phone,
       code,
       minutes: SMS_VERIFICATION_CODE_EXPIRES_MINUTES,

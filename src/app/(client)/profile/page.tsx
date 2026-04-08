@@ -372,7 +372,7 @@ export default async function ProfilePage() {
                   <p className="mt-2 text-sm leading-6 text-slate-500">
                     {needsPhoneBinding
                       ? '普通用户入口已切换为手机号登录，请尽快完成绑定。'
-                      : '普通用户入口会使用手机号 + 密码登录。'}
+                      : '普通用户入口会使用手机号 + 验证码登录。'}
                   </p>
                 </div>
               </div>

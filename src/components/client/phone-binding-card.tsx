@@ -123,7 +123,7 @@ export function PhoneBindingCard({
             <p className="max-w-2xl text-sm leading-6 text-slate-600">
               {required
                 ? '你的普通用户账号还没有绑定手机号。绑定完成前，普通用户工作台会保持锁定。'
-                : '绑定手机号后，普通用户入口会统一使用手机号 + 密码登录。'}
+                : '绑定手机号后，普通用户入口会统一使用手机号 + 验证码登录。'}
             </p>
           </div>
         </div>

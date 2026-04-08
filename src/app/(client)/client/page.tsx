@@ -49,13 +49,13 @@ const guestEntryPlans = [
     marker: '0',
     unit: '元',
     quota: '新用户 100 积分',
-    subtitle: '默认注册即开通',
-    description: '默认注册的新用户直接进入个人体验版，用于快速体验平台基础能力。',
-    cta: '立即注册',
+    subtitle: '验证码登录即开通',
+    description: '首次使用手机号验证码登录后会自动开通个人体验版，用于快速体验平台基础能力。',
+    cta: '立即体验',
     href: '/login?callbackUrl=%2Fprofile',
     loginHref: '/login?callbackUrl=%2Fprofile',
     tone: 'default' as const,
-    points: ['默认注册的用户就是这个版本', '新用户赠送 100 积分', '限制时间 7 天'],
+    points: ['首次验证码登录默认开通', '新用户赠送 100 积分', '限制时间 7 天'],
   },
   {
     title: '个人专业版',
@@ -163,7 +163,7 @@ function PricingLanding({
         <div className="mx-auto max-w-4xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-4 py-2 text-sm text-slate-600 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.42)] backdrop-blur">
             <span className="h-2 w-2 rounded-full bg-orange-500" />
-            新用户注册，可 0 元获取 100 积分体验
+            新用户手机号验证码登录，可 0 元获取 100 积分体验
           </div>
 
           <h1 className="mt-8 font-client-serif text-5xl leading-[1.06] text-slate-950 sm:text-6xl lg:text-[4.7rem]">

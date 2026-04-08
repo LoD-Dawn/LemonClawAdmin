@@ -6,7 +6,7 @@ import { maskPhone } from '@/lib/phone'
 export const SMS_VERIFICATION_CODE_EXPIRES_MINUTES = 10
 export const SMS_VERIFICATION_CODE_RESEND_SECONDS = 60
 
-type SmsScene = 'register' | 'bind_phone'
+type SmsScene = 'login' | 'register' | 'bind_phone'
 
 type SendVerificationSmsInput = {
   phone: string
@@ -75,14 +75,13 @@ export function buildAliyunSmsUrl(input: SendVerificationSmsInput, now = new Dat
     throw new Error('SMS_CONFIG_MISSING')
   }
 
-  const timestamp = now.toISOString().replace('.000Z', 'Z')
+  const timestamp = now.toISOString().replace(/\.\d{3}Z$/, 'Z')
   const params = {
     AccessKeyId: config.accessKeyId,
     Action: 'SendSms',
     Format: 'JSON',
     PhoneNumbers: input.phone.replace(/^\+86/, ''),
     RegionId: config.region,
-    SignMethod: 'HMAC-SHA1',
     SignatureMethod: 'HMAC-SHA1',
     SignatureNonce: randomUUID(),
     SignatureVersion: '1.0',
@@ -96,9 +95,9 @@ export function buildAliyunSmsUrl(input: SendVerificationSmsInput, now = new Dat
     Version: '2017-05-25',
   }
 
-  const canonicalized = Object.entries(params)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => `${percentEncode(key)}=${percentEncode(value)}`)
+  const canonicalized = Object.keys(params)
+    .sort()
+    .map((key) => `${percentEncode(key)}=${percentEncode(params[key as keyof typeof params])}`)
     .join('&')
 
   const stringToSign = `GET&${percentEncode('/')}&${percentEncode(canonicalized)}`
@@ -159,6 +158,13 @@ export async function sendRegisterSmsCode(input: { phone: string; code: string; 
   await sendVerificationSms({
     ...input,
     scene: 'register',
+  })
+}
+
+export async function sendLoginSmsCode(input: { phone: string; code: string; minutes: number }) {
+  await sendVerificationSms({
+    ...input,
+    scene: 'login',
   })
 }
 

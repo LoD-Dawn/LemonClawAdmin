@@ -1,16 +1,180 @@
+import { randomUUID } from 'crypto'
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import {
+  DEFAULT_CONSUMER_ORGANIZATION_ID,
   canUserAccessLoginEntryMode,
   type AccountTypeValue,
   type LoginEntryMode,
 } from '@/lib/default-organizations'
 import { recordOperationLog } from '@/lib/operation-log'
 import { isPhoneFormatValid, normalizePhone } from '@/lib/phone'
+import {
+  consumePhoneVerificationCode,
+  getPhoneVerificationCodeErrorMessage,
+  PHONE_VERIFICATION_PURPOSE_LOGIN,
+} from '@/lib/phone-verification'
+import { createSelfServiceConsumerRegistrationQuota } from '@/lib/user-claw-quota-policy'
 
 const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
+
+type AuthUserRecord = {
+  id: string
+  email: string
+  phone: string | null
+  name: string
+  accountType: AccountTypeValue
+  isSuperAdmin: boolean
+  organizationId: string | null
+  isDepartmentAdmin: boolean
+  departmentId: string | null
+  isActive: boolean
+}
+
+function buildConsumerPlaceholderEmail(phone: string) {
+  const digits = phone.replace(/\D/g, '')
+  return `phone-${digits}@placeholder.lemonclaw.local`
+}
+
+function buildConsumerDefaultName(phone: string) {
+  return `用户${phone.slice(-4)}`
+}
+
+function toAuthUser(user: Omit<AuthUserRecord, 'isActive'>) {
+  return {
+    id: user.id,
+    email: user.email,
+    phone: user.phone,
+    name: user.name,
+    accountType: user.accountType,
+    isSuperAdmin: user.isSuperAdmin,
+    organizationId: user.organizationId,
+    isDepartmentAdmin: user.isDepartmentAdmin,
+    departmentId: user.departmentId,
+    requiresPhoneBinding: user.accountType === 'consumer' && !user.phone,
+  }
+}
+
+async function authenticateConsumerByPhoneCode(phoneInput: string, smsCode: string) {
+  if (!isPhoneFormatValid(phoneInput) || getPhoneVerificationCodeErrorMessage(smsCode)) {
+    return null
+  }
+
+  const registrationQuota = createSelfServiceConsumerRegistrationQuota()
+  let autoRegistered = false
+
+  const user = await db.$transaction(async (tx) => {
+    const normalizedPhone = await consumePhoneVerificationCode(
+      tx,
+      phoneInput,
+      PHONE_VERIFICATION_PURPOSE_LOGIN,
+      smsCode
+    )
+
+    const existingUser = await tx.user.findUnique({
+      where: { phone: normalizedPhone },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        name: true,
+        accountType: true,
+        isSuperAdmin: true,
+        organizationId: true,
+        isDepartmentAdmin: true,
+        departmentId: true,
+        isActive: true,
+      },
+    })
+
+    if (existingUser) {
+      if (existingUser.accountType !== 'consumer') {
+        throw new Error('PHONE_LOGIN_NOT_SUPPORTED_FOR_ACCOUNT')
+      }
+
+      return existingUser
+    }
+
+    const defaultOrganization = await tx.organization.findUnique({
+      where: { id: DEFAULT_CONSUMER_ORGANIZATION_ID },
+      select: { id: true },
+    })
+
+    if (!defaultOrganization) {
+      throw new Error('DEFAULT_CONSUMER_ORGANIZATION_MISSING')
+    }
+
+    const createdUser = await tx.user.create({
+      data: {
+        name: buildConsumerDefaultName(normalizedPhone),
+        email: buildConsumerPlaceholderEmail(normalizedPhone),
+        phone: normalizedPhone,
+        passwordHash: await bcrypt.hash(randomUUID(), 12),
+        accountType: 'consumer',
+        organizationId: defaultOrganization.id,
+        isSuperAdmin: false,
+        isDepartmentAdmin: false,
+        departmentId: null,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        name: true,
+        accountType: true,
+        isSuperAdmin: true,
+        organizationId: true,
+        isDepartmentAdmin: true,
+        departmentId: true,
+        isActive: true,
+      },
+    })
+
+    await tx.userClawQuota.create({
+      data: {
+        userId: createdUser.id,
+        creditBalance: registrationQuota.creditBalance,
+        pricingVersion: registrationQuota.pricingVersion,
+        expiresAt: registrationQuota.expiresAt,
+      },
+    })
+
+    autoRegistered = true
+    return createdUser
+  })
+
+  if (!user.isActive || !canUserAccessLoginEntryMode(user, 'consumer')) {
+    return null
+  }
+
+  await recordOperationLog({
+    actor: user,
+    module: 'auth',
+    action: autoRegistered ? 'auth.consumer.auto-register-login' : 'auth.consumer.sms-login',
+    targetType: 'auth_session',
+    targetId: user.id,
+    targetName: user.email,
+    targetUserId: user.id,
+    summary: `${user.name || user.email} 通过手机号验证码登录个人工作台`,
+    metadata: {
+      entryMode: 'consumer',
+      loginIdentifierType: 'phone_sms_code',
+      phone: user.phone,
+      requiresPhoneBinding: false,
+      accountType: user.accountType,
+      isSuperAdmin: user.isSuperAdmin,
+      isDepartmentAdmin: user.isDepartmentAdmin,
+      organizationId: user.organizationId,
+      departmentId: user.departmentId,
+      autoRegistered,
+    },
+  })
+
+  return toAuthUser(user)
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: authSecret,
@@ -18,6 +182,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: process.env.AUTH_DEBUG === 'true',
   providers: [
     Credentials({
+      id: 'credentials',
       name: 'credentials',
       credentials: {
         identifier: { label: 'Identifier', type: 'text' },
@@ -99,17 +264,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           },
         })
 
-        return {
-          id: user.id,
-          email: user.email,
-          phone: user.phone,
-          name: user.name,
-          accountType: user.accountType,
-          isSuperAdmin: user.isSuperAdmin,
-          organizationId: user.organizationId,
-          isDepartmentAdmin: user.isDepartmentAdmin,
-          departmentId: user.departmentId,
-          requiresPhoneBinding: user.accountType === 'consumer' && !user.phone,
+        return toAuthUser(user)
+      }
+    }),
+    Credentials({
+      id: 'consumer-phone-code',
+      name: 'consumer-phone-code',
+      credentials: {
+        phone: { label: 'Phone', type: 'text' },
+        smsCode: { label: 'Sms Code', type: 'text' },
+      },
+      async authorize(credentials) {
+        const phone = String(credentials?.phone || '').trim()
+        const smsCode = String(credentials?.smsCode || '').trim()
+
+        try {
+          return await authenticateConsumerByPhoneCode(phone, smsCode)
+        } catch (error) {
+          if (!(error instanceof Error) || (
+            error.message !== 'PHONE_LOGIN_NOT_SUPPORTED_FOR_ACCOUNT'
+            && error.message !== 'DEFAULT_CONSUMER_ORGANIZATION_MISSING'
+            && error.message !== 'PHONE_VERIFICATION_CODE_INVALID'
+            && error.message !== 'PHONE_VERIFICATION_CODE_EXPIRED'
+          )) {
+            console.error('[auth.consumer-phone-code] authorize failed:', error)
+          }
+
+          return null
         }
       }
     })
