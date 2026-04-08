@@ -69,16 +69,18 @@ DATABASE_URL="file:./dev.db"
 NEXTAUTH_SECRET="your-secret-here"
 NEXTAUTH_URL="http://localhost:3000"
 ADMIN_EMAIL="admin@local.com"
+ADMIN_PHONE="13800000000"
 ADMIN_PASSWORD="admin123"
 JWT_SECRET="your-jwt-secret-here"
 MODEL_API_KEY_ENCRYPTION_SECRET="your-model-api-key-secret"
-EMAIL_VERIFICATION_SECRET="change-this-email-verification-secret"
-QQ_SMTP_HOST="smtp.qq.com"
-QQ_SMTP_PORT="465"
-QQ_SMTP_SECURE="true"
-QQ_SMTP_USER="your-qq-mail@qq.com"
-QQ_SMTP_PASS="your-qq-smtp-authorize-code"
-QQ_SMTP_FROM="LemonClaw <your-qq-mail@qq.com>"
+PHONE_VERIFICATION_SECRET="change-this-phone-verification-secret"
+SMS_DELIVERY_MODE="mock"
+ALIYUN_SMS_ACCESS_KEY_ID=""
+ALIYUN_SMS_ACCESS_KEY_SECRET=""
+ALIYUN_SMS_SIGN_NAME="LemonClaw"
+ALIYUN_SMS_REGISTER_TEMPLATE_CODE=""
+ALIYUN_SMS_REGION="cn-hangzhou"
+ALIYUN_SMS_ENDPOINT="dysmsapi.aliyuncs.com"
 ```
 
 建议做法：
@@ -90,11 +92,12 @@ QQ_SMTP_FROM="LemonClaw <your-qq-mail@qq.com>"
 说明：
 
 - `DATABASE_URL="file:./dev.db"` 对应的是 Prisma 的 SQLite 数据库
-- `ADMIN_EMAIL` 和 `ADMIN_PASSWORD` 会被种子脚本用来创建默认管理员
+- `ADMIN_EMAIL`、`ADMIN_PHONE` 和 `ADMIN_PASSWORD` 会被种子脚本用来创建默认管理员
 - `NEXTAUTH_SECRET` 和 `JWT_SECRET` 在真实环境中请务必替换为强随机值
 - `MODEL_API_KEY_ENCRYPTION_SECRET` 用来加密模型提供商的 API Key，生产环境请使用独立强随机值
-- `EMAIL_VERIFICATION_SECRET` 用来哈希邮箱验证码，生产环境请使用独立强随机值
-- `QQ_SMTP_PASS` 需要填写 QQ 邮箱开启 SMTP 后生成的授权码，不是邮箱登录密码
+- `PHONE_VERIFICATION_SECRET` 用来哈希短信验证码，生产环境请使用独立强随机值
+- `SMS_DELIVERY_MODE=mock` 适合本地开发，会在服务端日志里输出验证码；联调和生产建议切到 `aliyun`
+- `ALIYUN_SMS_*` 用于阿里云短信 `SendSms` 调用，正式环境需要提前准备 AccessKey、签名和模板编码
 - `Prisma CLI` 默认读取根目录 `.env`，所以数据库相关变量建议放在 `.env` 中
 
 ### 3. 初始化数据库
@@ -149,9 +152,10 @@ npm run dev
 默认超级管理员：
 
 - 邮箱：`admin@local.com`
+- 手机号：`+8613800000000`
 - 密码：`admin123`
 
-如果你在 `.env` 中修改了 `ADMIN_EMAIL` / `ADMIN_PASSWORD`，则会按你的配置创建。
+如果你在 `.env` 中修改了 `ADMIN_EMAIL` / `ADMIN_PHONE` / `ADMIN_PASSWORD`，则会按你的配置创建。
 
 ## 新手上手指南
 
@@ -315,6 +319,12 @@ npm run import:resources -- --type mcp --file ./data/mcps.json --mode upsert --r
 默认登录页：
 
 - `/login`
+
+当前登录规则：
+
+- 普通用户：手机号 + 密码
+- 企业用户：邮箱 + 密码
+- 历史普通用户如果还没有绑定手机号，可临时用邮箱登录并在个人概览中完成补绑
 
 ### 2. OAuth 鉴权
 

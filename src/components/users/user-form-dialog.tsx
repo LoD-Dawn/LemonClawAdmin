@@ -22,6 +22,7 @@ import {
   type OrganizationOption,
   type UserRoleValue,
 } from '@/lib/user-role-policy'
+import { isPhoneFormatValid } from '@/lib/phone'
 
 export function UserFormDialog({
   organizations,
@@ -109,6 +110,7 @@ export function UserFormDialog({
     const data = {
       name: formData.get('name') as string,
       email: formData.get('email') as string,
+      phone: formData.get('phone') as string,
       password: formData.get('password') as string,
       accountType,
       organizationId: accountType === 'consumer'
@@ -132,6 +134,8 @@ export function UserFormDialog({
     const newErrors: Record<string, string> = {}
     if (!data.name) newErrors.name = '姓名不能为空'
     if (!data.email) newErrors.email = '邮箱不能为空'
+    if (!data.phone) newErrors.phone = '手机号不能为空'
+    if (data.phone && !isPhoneFormatValid(data.phone)) newErrors.phone = '请输入有效的中国大陆手机号'
     if (!data.password || data.password.length < 8) newErrors.password = '密码至少8位'
     if (accountType === 'consumer' && !defaultConsumerOrganization) newErrors.accountType = '默认普通用户组织不存在'
     if (!isUnlimitedRole && (!Number.isFinite(parsedCreditBalance) || parsedCreditBalance < 0)) newErrors.creditBalance = '积分不能小于 0'
@@ -214,6 +218,17 @@ export function UserFormDialog({
               className={errors.email ? 'border-destructive' : ''}
             />
             {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+            </div>
+            <div className="space-y-2">
+            <Label htmlFor="phone">手机号</Label>
+            <Input
+              id="phone"
+              name="phone"
+              required
+              placeholder="请输入手机号，如 13812345678"
+              className={errors.phone ? 'border-destructive' : ''}
+            />
+            {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
             </div>
             <div className="space-y-2">
             <Label htmlFor="password">密码</Label>

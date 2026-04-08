@@ -5,11 +5,13 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string
+      phone: string | null
       accountType: AccountTypeValue
       isSuperAdmin: boolean
       organizationId: string | null
       isDepartmentAdmin: boolean
       departmentId: string | null
+      requiresPhoneBinding: boolean
     } & DefaultSession['user']
   }
 }

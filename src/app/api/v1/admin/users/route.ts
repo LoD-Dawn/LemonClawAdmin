@@ -4,15 +4,18 @@ import { db } from '@/lib/db'
 import { fetchAdminUsersPage, fetchAdminUserById } from '@/lib/admin-user-quota'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
+import type { Prisma } from '@prisma/client'
 import {
   normalizeUserPermissionInput,
   validateUserPermissionScope,
 } from '@/lib/user-role-policy'
 import { recordOperationLog } from '@/lib/operation-log'
 import { DEFAULT_PRICING_VERSION } from '@/lib/user-claw-quota-policy'
+import { isPhoneFormatValid, normalizePhone } from '@/lib/phone'
 
 const createSchema = z.object({
   email: z.string().email(),
+  phone: z.string().trim().min(1).max(32),
   password: z.string().min(8),
   name: z.string().min(1).max(255),
   accountType: z.enum(['consumer', 'enterprise']).optional(),
@@ -53,10 +56,18 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if (!isPhoneFormatValid(parsed.data.phone)) {
+    return NextResponse.json(
+      { error: '手机号格式不正确。', code: 'VALIDATION_PHONE_INVALID' },
+      { status: 400 }
+    )
+  }
+
   const { password, creditBalance, pricingVersion, quotaExpiresAt, ...userData } = parsed.data
   const passwordHash = await bcrypt.hash(password, 12)
   const normalizedData = {
     ...userData,
+    phone: normalizePhone(userData.phone),
     ...normalizeUserPermissionInput(userData),
   }
   const isUnlimitedUser = normalizedData.isSuperAdmin || normalizedData.isDepartmentAdmin
@@ -127,6 +138,7 @@ export async function POST(request: NextRequest) {
       summary: `创建用户 ${user.email}`,
       metadata: {
         email: user.email,
+        phone: user.phone,
         name: user.name,
         accountType: user.accountType,
         organizationId: user.organizationId,
@@ -143,9 +155,18 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: user }, { status: 201 })
   } catch (error) {
-    if ((error as { code?: string }).code === 'P2002') {
+    const prismaError = error as Prisma.PrismaClientKnownRequestError
+    if (prismaError?.code === 'P2002') {
+      const targets = Array.isArray(prismaError.meta?.target) ? prismaError.meta?.target.join(',') : ''
+      if (targets.includes('phone')) {
+        return NextResponse.json(
+          { error: '该手机号已绑定其他账号。', code: 'CONFLICT_PHONE_EXISTS' },
+          { status: 409 }
+        )
+      }
+
       return NextResponse.json(
-        { error: 'Email already exists', code: 'CONFLICT_EMAIL_EXISTS' },
+        { error: '该邮箱已被其他账号使用。', code: 'CONFLICT_EMAIL_EXISTS' },
         { status: 409 }
       )
     }

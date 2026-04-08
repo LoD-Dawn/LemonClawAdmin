@@ -7,6 +7,7 @@ import {
 const adminUserSelect = {
   id: true,
   email: true,
+  phone: true,
   name: true,
   accountType: true,
   organizationId: true,
@@ -157,6 +158,7 @@ export async function fetchAdminUsersPage(params: {
           OR: [
             { name: { contains: search } },
             { email: { contains: search } },
+            { phone: { contains: search } },
           ],
         }
       : {}),

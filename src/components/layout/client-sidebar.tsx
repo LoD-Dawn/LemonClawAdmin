@@ -21,11 +21,13 @@ interface ClientSidebarProps {
   user: {
     name?: string | null
     email?: string | null
+    phone?: string | null
     image?: string | null
     accountType?: 'consumer' | 'enterprise'
     isSuperAdmin: boolean
     isDepartmentAdmin: boolean
     organizationName?: string | null
+    requiresPhoneBinding?: boolean
   }
 }
 

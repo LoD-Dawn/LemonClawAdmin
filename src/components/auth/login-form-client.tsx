@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { LoginEntryMode } from '@/lib/default-organizations'
+import { isPhoneFormatValid } from '@/lib/phone'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +17,7 @@ import {
   LockKeyhole,
   Mail,
   ShieldCheck,
+  Smartphone,
   UserRound,
 } from 'lucide-react'
 
@@ -52,10 +54,10 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [registerEmail, setRegisterEmail] = useState('')
-  const [verificationCode, setVerificationCode] = useState('')
-  const [isSendingVerificationCode, setIsSendingVerificationCode] = useState(false)
-  const [verificationCooldown, setVerificationCooldown] = useState(0)
+  const [registerPhone, setRegisterPhone] = useState('')
+  const [smsCode, setSmsCode] = useState('')
+  const [isSendingSmsCode, setIsSendingSmsCode] = useState(false)
+  const [smsCooldown, setSmsCooldown] = useState(0)
 
   const oauth = oauthParams || {
     client_id: searchParams.get('client_id') || '',
@@ -101,10 +103,10 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
   const description = isAuthFlow
     ? '完成登录后，系统会继续当前授权流程并跳转回目标应用。'
     : formMode === 'register'
-      ? '注册后会自动登录并进入普通用户工作台。'
+      ? '注册后会自动登录并进入普通用户工作台，邮箱会保留为资料字段。'
       : entryMode === 'enterprise'
         ? '适用于企业成员、部门管理员和平台管理员。企业账号通常由管理员统一开通。'
-        : '适用于普通用户查看资源、提交申请和管理个人工作区。没有账号时可直接注册。'
+        : '适用于普通用户查看资源、提交申请和管理个人工作区。没有账号时可直接注册；历史未绑定手机号的账号可先用邮箱完成补绑。'
 
   async function finishAuthFlow() {
     if (isOAuthFlow) {
@@ -155,19 +157,19 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
     router.refresh()
   }
 
-  async function loginWithCredentials(email: string, password: string, entryMode: LoginEntryMode) {
+  async function loginWithCredentials(identifier: string, password: string, loginEntryMode: LoginEntryMode) {
     const result = await signIn('credentials', {
-      email,
+      identifier,
       password,
-      entryMode,
+      entryMode: loginEntryMode,
       redirect: false,
     })
 
     if (result?.error) {
       throw new Error(
-        entryMode === 'enterprise'
+        loginEntryMode === 'enterprise'
           ? '邮箱或密码错误，或该账号不属于企业用户入口。'
-          : '邮箱或密码错误，或该账号不属于普通用户入口。'
+          : '手机号或密码错误；若你是历史未绑定手机号的普通用户，也可暂时输入邮箱完成补绑。'
       )
     }
 
@@ -182,10 +184,12 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
 
     const formData = new FormData(event.currentTarget)
     const name = String(formData.get('name') || '').trim()
+    const identifier = String(formData.get('identifier') || '').trim()
+    const phone = String(formData.get('phone') || '').trim()
     const email = String(formData.get('email') || '').trim()
     const password = String(formData.get('password') || '')
     const confirmPassword = String(formData.get('confirmPassword') || '')
-    const submittedVerificationCode = String(formData.get('verificationCode') || '').trim()
+    const submittedSmsCode = String(formData.get('smsCode') || '').trim()
 
     try {
       if (formMode === 'register') {
@@ -201,14 +205,18 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
           throw new Error('两次输入的密码不一致。')
         }
 
-        if (!/^\d{6}$/.test(submittedVerificationCode)) {
-          throw new Error('请输入 6 位邮箱验证码。')
+        if (!isPhoneFormatValid(phone)) {
+          throw new Error('请输入有效的中国大陆手机号。')
+        }
+
+        if (!/^\d{6}$/.test(submittedSmsCode)) {
+          throw new Error('请输入 6 位短信验证码。')
         }
 
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password, verificationCode: submittedVerificationCode }),
+          body: JSON.stringify({ name, phone, email, password, smsCode: submittedSmsCode }),
         })
 
         const result = await response.json().catch(() => ({}))
@@ -217,9 +225,15 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
         }
 
         setSuccessMessage('注册成功，正在为你登录...')
+        await loginWithCredentials(phone, password, entryMode)
+        return
       }
 
-      await loginWithCredentials(email, password, entryMode)
+      if (entryMode === 'consumer' && !identifier) {
+        throw new Error('请输入手机号；历史未绑定手机号的账号可输入邮箱。')
+      }
+
+      await loginWithCredentials(identifier, password, entryMode)
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '提交失败，请稍后重试。')
     } finally {
@@ -227,15 +241,19 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
     }
   }
 
+  function resetRegisterState() {
+    setRegisterPhone('')
+    setSmsCode('')
+    setSmsCooldown(0)
+    setIsSendingSmsCode(false)
+  }
+
   function handleEntryModeChange(nextMode: EntryMode) {
     setEntryMode(nextMode)
     setError('')
     setSuccessMessage('')
     if (nextMode !== 'consumer') {
-      setRegisterEmail('')
-      setVerificationCode('')
-      setVerificationCooldown(0)
-      setIsSendingVerificationCode(false)
+      resetRegisterState()
     }
     if (nextMode === 'enterprise' && formMode === 'register') {
       setFormMode('login')
@@ -245,50 +263,50 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
   const isRegisterMode = formMode === 'register'
 
   useEffect(() => {
-    if (verificationCooldown <= 0) {
+    if (smsCooldown <= 0) {
       return
     }
 
     const timer = window.setTimeout(() => {
-      setVerificationCooldown((current) => Math.max(0, current - 1))
+      setSmsCooldown((current) => Math.max(0, current - 1))
     }, 1000)
 
     return () => window.clearTimeout(timer)
-  }, [verificationCooldown])
+  }, [smsCooldown])
 
   async function handleSendVerificationCode() {
-    const email = registerEmail.trim()
+    const phone = registerPhone.trim()
     setError('')
     setSuccessMessage('')
 
-    if (!email) {
-      setError('请先输入注册邮箱。')
+    if (!phone || !isPhoneFormatValid(phone)) {
+      setError('请先输入有效的中国大陆手机号。')
       return
     }
 
-    setIsSendingVerificationCode(true)
+    setIsSendingSmsCode(true)
 
     try {
-      const response = await fetch('/api/auth/register/email-code', {
+      const response = await fetch('/api/auth/register/phone-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ phone }),
       })
 
       const result = await response.json().catch(() => ({}))
       if (!response.ok) {
         if (result?.data?.cooldownRemaining) {
-          setVerificationCooldown(Number(result.data.cooldownRemaining) || 0)
+          setSmsCooldown(Number(result.data.cooldownRemaining) || 0)
         }
         throw new Error(result.error || '验证码发送失败，请稍后重试。')
       }
 
-      setVerificationCooldown(Number(result?.data?.resendInSeconds) || 60)
-      setSuccessMessage(result.message || '验证码已发送，请查收邮箱。')
+      setSmsCooldown(Number(result?.data?.resendInSeconds) || 60)
+      setSuccessMessage(result.message || '验证码已发送，请查收短信。')
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : '验证码发送失败，请稍后重试。')
     } finally {
-      setIsSendingVerificationCode(false)
+      setIsSendingSmsCode(false)
     }
   }
 
@@ -419,9 +437,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
                 setFormMode('login')
                 setError('')
                 setSuccessMessage('')
-                setRegisterEmail('')
-                setVerificationCode('')
-                setVerificationCooldown(0)
+                resetRegisterState()
               }}
               className={cn(
                 'rounded-full px-4 py-2 text-sm font-medium transition-all',
@@ -469,6 +485,57 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-sm font-medium text-slate-700">
+                    手机号
+                  </Label>
+                  <div className="relative">
+                    <Smartphone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      required
+                      placeholder="请输入手机号，如 13812345678"
+                      value={registerPhone}
+                      onChange={(event) => setRegisterPhone(event.target.value)}
+                      className="h-11 rounded-2xl border-white bg-white pl-11 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="smsCode" className="text-sm font-medium text-slate-700">
+                    短信验证码
+                  </Label>
+                  <div className="flex gap-3">
+                    <Input
+                      id="smsCode"
+                      name="smsCode"
+                      required
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="请输入 6 位验证码"
+                      value={smsCode}
+                      onChange={(event) => setSmsCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="h-11 flex-1 rounded-2xl border-white bg-white text-base tracking-[0.25em] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] placeholder:tracking-normal"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSendingSmsCode || smsCooldown > 0}
+                      onClick={handleSendVerificationCode}
+                      className="h-11 min-w-[148px] rounded-2xl border-orange-200 bg-white px-4 text-slate-800 hover:border-orange-300 hover:bg-orange-50"
+                    >
+                      {isSendingSmsCode
+                        ? '发送中...'
+                        : smsCooldown > 0
+                          ? `${smsCooldown}s`
+                          : '发送验证码'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="email" className="text-sm font-medium text-slate-700">
                     邮箱
                   </Label>
@@ -480,43 +547,12 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
                       type="email"
                       required
                       placeholder="name@example.com"
-                      value={registerEmail}
-                      onChange={(event) => setRegisterEmail(event.target.value)}
                       className="h-11 rounded-2xl border-white bg-white pl-11 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="verificationCode" className="text-sm font-medium text-slate-700">
-                    邮箱验证码
-                  </Label>
-                  <div className="flex gap-3">
-                    <Input
-                      id="verificationCode"
-                      name="verificationCode"
-                      required
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="请输入 6 位验证码"
-                      value={verificationCode}
-                      onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                      className="h-11 flex-1 rounded-2xl border-white bg-white text-base tracking-[0.25em] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] placeholder:tracking-normal"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isSendingVerificationCode || verificationCooldown > 0}
-                      onClick={handleSendVerificationCode}
-                      className="h-11 min-w-[148px] rounded-2xl border-orange-200 bg-white px-4 text-slate-800 hover:border-orange-300 hover:bg-orange-50"
-                    >
-                      {isSendingVerificationCode
-                        ? '发送中...'
-                        : verificationCooldown > 0
-                          ? `${verificationCooldown}s`
-                          : '发送验证码'}
-                    </Button>
-                  </div>
+                  <p className="text-xs leading-5 text-slate-500">
+                    邮箱继续保留为资料字段和通知字段，不再用于注册验证码。
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -557,20 +593,29 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
 
           {!isRegisterMode ? (
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">
-                邮箱
+              <Label htmlFor="identifier" className="text-sm font-medium text-slate-700">
+                {entryMode === 'enterprise' ? '邮箱' : '手机号'}
               </Label>
               <div className="relative">
-                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                {entryMode === 'enterprise' ? (
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                ) : (
+                  <Smartphone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                )}
                 <Input
-                  id="email"
-                  name="email"
-                  type="email"
+                  id="identifier"
+                  name="identifier"
+                  type={entryMode === 'enterprise' ? 'email' : 'text'}
                   required
-                  placeholder={entryMode === 'enterprise' ? 'name@company.com' : 'name@example.com'}
+                  placeholder={entryMode === 'enterprise' ? 'name@company.com' : '请输入手机号，如 13812345678'}
                   className="h-11 rounded-2xl border-slate-200 bg-white pl-11"
                 />
               </div>
+              {entryMode === 'consumer' ? (
+                <p className="text-xs leading-5 text-slate-500">
+                  历史普通用户如果尚未绑定手机号，可临时输入邮箱登录并在个人概览中完成补绑。
+                </p>
+              ) : null}
             </div>
           ) : null}
 

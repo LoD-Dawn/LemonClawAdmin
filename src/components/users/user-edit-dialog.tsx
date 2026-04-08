@@ -23,11 +23,13 @@ import {
   type OrganizationOption,
   type UserRoleValue,
 } from '@/lib/user-role-policy'
+import { isPhoneFormatValid } from '@/lib/phone'
 
 interface User {
   id: string
   name: string
   email: string
+  phone: string | null
   accountType: AccountTypeValue
   isSuperAdmin: boolean
   isDepartmentAdmin: boolean
@@ -97,6 +99,7 @@ export function UserEditDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState(user?.name || '')
   const [email, setEmail] = useState(user?.email || '')
+  const [phone, setPhone] = useState(user?.phone || '')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [accountType, setAccountType] = useState<AccountTypeValue>(user?.accountType || 'enterprise')
@@ -125,6 +128,7 @@ export function UserEditDialog({
     if (user) {
       setName(user.name)
       setEmail(user.email)
+      setPhone(user.phone || '')
       setPassword('')
       setConfirmPassword('')
       setAccountType(user.accountType)
@@ -200,6 +204,16 @@ export function UserEditDialog({
       return
     }
 
+    if (phone.trim()) {
+      if (!isPhoneFormatValid(phone)) {
+        setError('请输入有效的中国大陆手机号')
+        return
+      }
+    } else if (user.phone) {
+      setError('已绑定手机号的账号不能清空手机号')
+      return
+    }
+
     const parsedCreditBalance = Number.parseInt(creditBalance || '0', 10)
     if (!isUnlimitedRole && (!Number.isFinite(parsedCreditBalance) || parsedCreditBalance < 0)) {
       setError('积分不能小于 0')
@@ -227,6 +241,7 @@ export function UserEditDialog({
         body: JSON.stringify({
           name,
           email,
+          ...(phone.trim() ? { phone } : {}),
           ...(password ? { password } : {}),
           accountType,
           organizationId: accountType === 'consumer'
@@ -294,6 +309,18 @@ export function UserEditDialog({
                   required
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">手机号</Label>
+              <Input
+                id="edit-phone"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="请输入手机号，如 13812345678"
+              />
+              {!user?.phone ? (
+                <p className="text-sm text-amber-700">历史用户尚未补齐手机号，建议本次编辑时一并补录。</p>
+              ) : null}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

@@ -65,17 +65,43 @@ async function ensureUserAccountTypeColumn(prisma) {
   }
 }
 
-async function ensureEmailVerificationCodesTable(prisma) {
+async function ensureUserPhoneColumn(prisma) {
+  const columns = await prisma.$queryRawUnsafe("PRAGMA table_info('users')")
+  const hasPhone = columns.some((column) => column.name === 'phone')
+
+  if (!hasPhone) {
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "users" ADD COLUMN "phone" TEXT;'
+    )
+    console.log('[db:ensure-schema] Added users.phone column')
+  } else {
+    console.log('[db:ensure-schema] users.phone already exists')
+  }
+
+  const indexes = await prisma.$queryRawUnsafe("PRAGMA index_list('users')")
+  const hasPhoneUniqueIndex = indexes.some((index) => index.name === 'users_phone_key')
+
+  if (!hasPhoneUniqueIndex) {
+    await prisma.$executeRawUnsafe(
+      'CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");'
+    )
+    console.log('[db:ensure-schema] Created users.phone unique index')
+  } else {
+    console.log('[db:ensure-schema] users.phone unique index already exists')
+  }
+}
+
+async function ensurePhoneVerificationCodesTable(prisma) {
   const tables = await prisma.$queryRawUnsafe(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'email_verification_codes'"
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'phone_verification_codes'"
   )
   const hasTable = tables.length > 0
 
   if (!hasTable) {
     await prisma.$executeRawUnsafe(`
-      CREATE TABLE "email_verification_codes" (
+      CREATE TABLE "phone_verification_codes" (
         "id" TEXT NOT NULL PRIMARY KEY,
-        "email" TEXT NOT NULL,
+        "phone" TEXT NOT NULL,
         "purpose" TEXT NOT NULL,
         "code_hash" TEXT NOT NULL,
         "expires_at" DATETIME NOT NULL,
@@ -86,14 +112,14 @@ async function ensureEmailVerificationCodesTable(prisma) {
       );
     `)
     await prisma.$executeRawUnsafe(
-      'CREATE UNIQUE INDEX "email_verification_codes_email_purpose_key" ON "email_verification_codes"("email", "purpose");'
+      'CREATE UNIQUE INDEX "phone_verification_codes_phone_purpose_key" ON "phone_verification_codes"("phone", "purpose");'
     )
     await prisma.$executeRawUnsafe(
-      'CREATE INDEX "email_verification_codes_expires_at_idx" ON "email_verification_codes"("expires_at");'
+      'CREATE INDEX "phone_verification_codes_expires_at_idx" ON "phone_verification_codes"("expires_at");'
     )
-    console.log('[db:ensure-schema] Created email_verification_codes table')
+    console.log('[db:ensure-schema] Created phone_verification_codes table')
   } else {
-    console.log('[db:ensure-schema] email_verification_codes already exists')
+    console.log('[db:ensure-schema] phone_verification_codes already exists')
   }
 }
 
@@ -143,7 +169,8 @@ async function main() {
 
   try {
     await ensureUserAccountTypeColumn(prisma)
-    await ensureEmailVerificationCodesTable(prisma)
+    await ensureUserPhoneColumn(prisma)
+    await ensurePhoneVerificationCodesTable(prisma)
     await ensureDefaultOrganizations(prisma)
   } finally {
     await prisma.$disconnect()

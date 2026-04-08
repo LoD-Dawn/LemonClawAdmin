@@ -23,6 +23,7 @@ type User = {
   id: string
   name: string
   email: string
+  phone: string | null
   accountType: AccountTypeValue
   isSuperAdmin: boolean
   isDepartmentAdmin: boolean
@@ -113,6 +114,11 @@ export function UsersTable({
       accessorKey: 'email',
       header: '邮箱',
       cell: ({ row }) => <span className="text-slate-500">{row.original.email}</span>,
+    },
+    {
+      accessorKey: 'phone',
+      header: '手机号',
+      cell: ({ row }) => <span className="text-slate-500">{row.original.phone ?? '-'}</span>,
     },
     {
       accessorKey: 'organization.name',
@@ -292,7 +298,7 @@ export function UsersTable({
       <div className="admin-surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="space-y-2">
           <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">账号列表</div>
-          <p className="text-sm leading-6 text-slate-600">支持创建、编辑、启用、禁用与删除用户，并统一维护组织归属、积分配额和累计使用情况。</p>
+          <p className="text-sm leading-6 text-slate-600">支持创建、编辑、启用、禁用与删除用户，并统一维护邮箱、手机号、组织归属、积分配额和累计使用情况。</p>
         </div>
         <UserFormDialog organizations={organizations} onSuccess={onRefresh} />
       </div>
@@ -300,7 +306,7 @@ export function UsersTable({
         columns={columns}
         data={users}
         searchKey="name"
-        searchPlaceholder="搜索姓名或邮箱..."
+        searchPlaceholder="搜索姓名、邮箱或手机号..."
         pageCount={pagination.pageCount}
         page={page}
         pageSize={pageSize}

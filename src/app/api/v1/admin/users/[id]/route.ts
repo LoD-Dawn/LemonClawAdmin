@@ -11,11 +11,13 @@ import {
 } from '@/lib/user-role-policy'
 import { recordOperationLog } from '@/lib/operation-log'
 import { DEFAULT_PRICING_VERSION } from '@/lib/user-claw-quota-policy'
+import { isPhoneFormatValid, normalizePhone } from '@/lib/phone'
 
 const PROTECTED_ADMIN_EMAIL = 'admin@local.com'
 
 const updateSchema = z.object({
   email: z.string().email().optional(),
+  phone: z.string().trim().min(1).max(32).optional(),
   password: z.string().min(8).optional(),
   name: z.string().min(1).max(255).optional(),
   accountType: z.enum(['consumer', 'enterprise']).optional(),
@@ -66,6 +68,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     select: {
       id: true,
       email: true,
+      phone: true,
       name: true,
       accountType: true,
       organizationId: true,
@@ -91,6 +94,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const updateData: Record<string, unknown> = { ...parsed.data }
+  if (Object.prototype.hasOwnProperty.call(parsed.data, 'phone')) {
+    if (!parsed.data.phone || !isPhoneFormatValid(parsed.data.phone)) {
+      return NextResponse.json(
+        { error: '手机号格式不正确。', code: 'VALIDATION_PHONE_INVALID' },
+        { status: 400 }
+      )
+    }
+
+    updateData.phone = normalizePhone(parsed.data.phone)
+  }
+
   const quotaPatch = {
     creditBalance: parsed.data.creditBalance,
     pricingVersion: parsed.data.pricingVersion,
@@ -160,88 +174,109 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     updateData.departmentId = nextPermissionState.departmentId
   }
 
-  await db.$transaction(async (tx: Prisma.TransactionClient) => {
-    await tx.user.update({
-      where: { id },
-      data: updateData,
+  try {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.user.update({
+        where: { id },
+        data: updateData,
+      })
+
+      const hasQuotaUpdate = ['creditBalance', 'pricingVersion', 'quotaExpiresAt']
+        .some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key))
+      const isUnlimitedUser = nextPermissionState.isSuperAdmin || nextPermissionState.isDepartmentAdmin
+
+      if (hasQuotaUpdate && !isUnlimitedUser) {
+        await tx.userClawQuota.upsert({
+          where: { userId: id },
+          update: {
+            ...(Object.prototype.hasOwnProperty.call(parsed.data, 'creditBalance')
+              ? { creditBalance: quotaPatch.creditBalance ?? 0 }
+              : {}),
+            ...(Object.prototype.hasOwnProperty.call(parsed.data, 'pricingVersion')
+              ? { pricingVersion: quotaPatch.pricingVersion ?? DEFAULT_PRICING_VERSION }
+              : {}),
+            ...(Object.prototype.hasOwnProperty.call(parsed.data, 'quotaExpiresAt')
+              ? { expiresAt: quotaPatch.quotaExpiresAt ? new Date(quotaPatch.quotaExpiresAt) : null }
+              : {}),
+          },
+          create: {
+            userId: id,
+            creditBalance: quotaPatch.creditBalance ?? 0,
+            pricingVersion: quotaPatch.pricingVersion ?? DEFAULT_PRICING_VERSION,
+            expiresAt: quotaPatch.quotaExpiresAt ? new Date(quotaPatch.quotaExpiresAt) : null,
+          },
+        })
+      }
+
+      if (updateData.isActive === false) {
+        const revokedAt = new Date()
+        await revokeActiveGrants(tx, { userId: id, revokedAt })
+        await tx.resourceApplication.updateMany({
+          where: { userId: id, status: 'approved' },
+          data: { status: 'revoked' },
+        })
+        await tx.oAuthToken.deleteMany({ where: { userId: id } })
+      }
+
     })
 
-    const hasQuotaUpdate = ['creditBalance', 'pricingVersion', 'quotaExpiresAt']
-      .some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key))
-    const isUnlimitedUser = nextPermissionState.isSuperAdmin || nextPermissionState.isDepartmentAdmin
+    const user = await fetchAdminUserById(id)
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found', code: 'NOT_FOUND_USER' },
+        { status: 404 }
+      )
+    }
+  
+    await recordOperationLog({
+      request,
+      actor: authResult,
+      module: 'users',
+      action: 'user.update',
+      targetType: 'user',
+      targetId: user.id,
+      targetName: user.email,
+      targetUserId: user.id,
+      summary: `更新用户 ${user.email}`,
+      metadata: {
+        email: user.email,
+        phone: user.phone,
+        name: user.name,
+        accountType: user.accountType,
+        organizationId: user.organizationId,
+        isSuperAdmin: user.isSuperAdmin,
+        isDepartmentAdmin: user.isDepartmentAdmin,
+        departmentId: user.departmentId,
+        isActive: user.isActive,
+        updatedFields: Object.keys(parsed.data).filter((key) => key !== 'password'),
+        passwordChanged: Boolean(parsed.data.password),
+        isUnlimited: user.clawQuota?.isUnlimited ?? false,
+        creditBalance: user.clawQuota?.creditBalance ?? null,
+        pricingVersion: user.clawQuota?.pricingVersion ?? null,
+        quotaExpiresAt: user.clawQuota?.expiresAt ?? null,
+      },
+    })
+  
+    return NextResponse.json({ data: user })
+  } catch (error) {
+    const prismaError = error as Prisma.PrismaClientKnownRequestError
+    if (prismaError?.code === 'P2002') {
+      const targets = Array.isArray(prismaError.meta?.target) ? prismaError.meta?.target.join(',') : ''
+      if (targets.includes('phone')) {
+        return NextResponse.json(
+          { error: '该手机号已绑定其他账号。', code: 'CONFLICT_PHONE_EXISTS' },
+          { status: 409 }
+        )
+      }
 
-    if (hasQuotaUpdate && !isUnlimitedUser) {
-      await tx.userClawQuota.upsert({
-        where: { userId: id },
-        update: {
-          ...(Object.prototype.hasOwnProperty.call(parsed.data, 'creditBalance')
-            ? { creditBalance: quotaPatch.creditBalance ?? 0 }
-            : {}),
-          ...(Object.prototype.hasOwnProperty.call(parsed.data, 'pricingVersion')
-            ? { pricingVersion: quotaPatch.pricingVersion ?? DEFAULT_PRICING_VERSION }
-            : {}),
-          ...(Object.prototype.hasOwnProperty.call(parsed.data, 'quotaExpiresAt')
-            ? { expiresAt: quotaPatch.quotaExpiresAt ? new Date(quotaPatch.quotaExpiresAt) : null }
-            : {}),
-        },
-        create: {
-          userId: id,
-          creditBalance: quotaPatch.creditBalance ?? 0,
-          pricingVersion: quotaPatch.pricingVersion ?? DEFAULT_PRICING_VERSION,
-          expiresAt: quotaPatch.quotaExpiresAt ? new Date(quotaPatch.quotaExpiresAt) : null,
-        },
-      })
+      return NextResponse.json(
+        { error: '该邮箱已被其他账号使用。', code: 'CONFLICT_EMAIL_EXISTS' },
+        { status: 409 }
+      )
     }
 
-    if (updateData.isActive === false) {
-      const revokedAt = new Date()
-      await revokeActiveGrants(tx, { userId: id, revokedAt })
-      await tx.resourceApplication.updateMany({
-        where: { userId: id, status: 'approved' },
-        data: { status: 'revoked' },
-      })
-      await tx.oAuthToken.deleteMany({ where: { userId: id } })
-    }
-
-  })
-
-  const user = await fetchAdminUserById(id)
-  if (!user) {
-    return NextResponse.json(
-      { error: 'User not found', code: 'NOT_FOUND_USER' },
-      { status: 404 }
-    )
+    throw error
   }
-
-  await recordOperationLog({
-    request,
-    actor: authResult,
-    module: 'users',
-    action: 'user.update',
-    targetType: 'user',
-    targetId: user.id,
-    targetName: user.email,
-    targetUserId: user.id,
-    summary: `更新用户 ${user.email}`,
-    metadata: {
-      email: user.email,
-      name: user.name,
-      accountType: user.accountType,
-      organizationId: user.organizationId,
-      isSuperAdmin: user.isSuperAdmin,
-      isDepartmentAdmin: user.isDepartmentAdmin,
-      departmentId: user.departmentId,
-      isActive: user.isActive,
-      updatedFields: Object.keys(parsed.data).filter((key) => key !== 'password'),
-      passwordChanged: Boolean(parsed.data.password),
-      isUnlimited: user.clawQuota?.isUnlimited ?? false,
-      creditBalance: user.clawQuota?.creditBalance ?? null,
-      pricingVersion: user.clawQuota?.pricingVersion ?? null,
-      quotaExpiresAt: user.clawQuota?.expiresAt ?? null,
-    },
-  })
-
-  return NextResponse.json({ data: user })
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

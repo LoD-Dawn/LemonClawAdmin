@@ -14,6 +14,7 @@ type CurrentUserRecord = Awaited<ReturnType<typeof fetchCurrentUserRecord>>
 export type ExternalCurrentUserProfile = {
   id: string
   email: string
+  phone: string | null
   name: string
   isActive: boolean
   roles: {
@@ -89,6 +90,7 @@ async function fetchCurrentUserRecord(userId: string) {
     select: {
       id: true,
       email: true,
+      phone: true,
       name: true,
       isActive: true,
       isSuperAdmin: true,
@@ -121,6 +123,7 @@ function serializeCurrentUserProfile(user: NonNullable<CurrentUserRecord>): Exte
   return {
     id: user.id,
     email: user.email,
+    phone: user.phone,
     name: user.name,
     isActive: user.isActive,
     roles: {

@@ -8,6 +8,7 @@ import {
   ROOT_ORGANIZATION_NAME,
   ROOT_ORGANIZATION_PATH,
 } from '../src/lib/default-organizations'
+import { normalizePhone } from '../src/lib/phone'
 
 const prisma = new PrismaClient()
 
@@ -52,14 +53,18 @@ async function main() {
 
   // Create admin user
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@local.com'
+  const adminPhone = normalizePhone(process.env.ADMIN_PHONE || '13800000000')
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
   const passwordHash = await bcrypt.hash(adminPassword, 12)
 
   const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: {},
+    update: {
+      phone: adminPhone,
+    },
     create: {
       email: adminEmail,
+      phone: adminPhone,
       passwordHash,
       name: 'Administrator',
       accountType: 'enterprise',

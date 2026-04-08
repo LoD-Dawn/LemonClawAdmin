@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { PhoneBindingCard } from '@/components/client/phone-binding-card'
 import {
   ArrowLeft,
   ArrowRight,
@@ -113,6 +114,7 @@ export default async function ProfilePage() {
         id: true,
         name: true,
         email: true,
+        phone: true,
         accountType: true,
         isSuperAdmin: true,
         isDepartmentAdmin: true,
@@ -267,6 +269,7 @@ export default async function ProfilePage() {
       : quota?.expiresAt
         ? `有效期至 ${new Date(quota.expiresAt).toLocaleDateString('zh-CN')}`
         : '当前额度未设置到期时间'
+  const needsPhoneBinding = session.user.requiresPhoneBinding || !user.phone
 
   return (
     <div className="mx-auto max-w-[1240px] space-y-6">
@@ -343,6 +346,70 @@ export default async function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
+          <Card className="rounded-[30px] border-white/85 bg-white/78 shadow-[0_28px_70px_-48px_rgba(15,23,42,0.28)]">
+            <CardContent className="p-6 sm:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">账号资料</p>
+                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">登录与联系信息</h2>
+                </div>
+                <Badge className={needsPhoneBinding ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}>
+                  {needsPhoneBinding ? '待绑定手机号' : '手机号已绑定'}
+                </Badge>
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">邮箱</p>
+                  <p className="mt-3 text-lg font-semibold text-slate-950">{user.email}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">邮箱继续保留为资料字段和通知字段。</p>
+                </div>
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">手机号</p>
+                  <p className="mt-3 text-lg font-semibold text-slate-950">{user.phone ?? '未绑定'}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    {needsPhoneBinding
+                      ? '普通用户入口已切换为手机号登录，请尽快完成绑定。'
+                      : '普通用户入口会使用手机号 + 密码登录。'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[30px] border-white/85 bg-white/78 shadow-[0_28px_70px_-48px_rgba(15,23,42,0.28)]">
+            <CardContent className="p-6 sm:p-7">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">身份信息</p>
+              <div className="mt-5 space-y-4 text-sm text-slate-600">
+                <div>
+                  <div className="text-slate-400">姓名</div>
+                  <div className="mt-1 font-medium text-slate-950">{user.name}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400">组织</div>
+                  <div className="mt-1 font-medium text-slate-950">{user.organization?.name ?? '未绑定组织'}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400">部门</div>
+                  <div className="mt-1 font-medium text-slate-950">{user.department?.name ?? '无'}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400">创建时间</div>
+                  <div className="mt-1 font-medium text-slate-950">{formatDateTime(user.createdAt)}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {needsPhoneBinding ? (
+          <PhoneBindingCard
+            initialPhone={user.phone}
+            required={session.user.requiresPhoneBinding}
+          />
+        ) : null}
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
