@@ -26,12 +26,20 @@ type OAuthClientItem = {
   name: string
   isActive: boolean
   allowedRedirectUris: string[]
+  defaultOrganizationId: string | null
   createdAt: string
   updatedAt: string
 }
 
+type OrganizationItem = {
+  id: string
+  name: string
+  type: string
+}
+
 interface OAuthClientsManagerProps {
   initialClients: OAuthClientItem[]
+  organizations: OrganizationItem[]
 }
 
 function toRedirectUriLines(uris: string[]) {
@@ -46,7 +54,7 @@ function formatDateTime(value: string) {
   return new Date(value).toLocaleString('zh-CN')
 }
 
-export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps) {
+export function OAuthClientsManager({ initialClients, organizations }: OAuthClientsManagerProps) {
   const { toast } = useToast()
   const [origin, setOrigin] = useState('')
   const [clients, setClients] = useState(initialClients)
@@ -55,6 +63,7 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
   const [name, setName] = useState(initialClients[0]?.name ?? '')
   const [status, setStatus] = useState(initialClients[0]?.isActive ? 'active' : 'inactive')
   const [redirectUriText, setRedirectUriText] = useState(toRedirectUriLines(initialClients[0]?.allowedRedirectUris ?? []))
+  const [defaultOrganizationId, setDefaultOrganizationId] = useState(initialClients[0]?.defaultOrganizationId ?? '')
   const [updatedAt, setUpdatedAt] = useState(initialClients[0]?.updatedAt ?? '')
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -62,6 +71,7 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
   const [createClientId, setCreateClientId] = useState('')
   const [createStatus, setCreateStatus] = useState('active')
   const [createRedirectUriText, setCreateRedirectUriText] = useState('')
+  const [createDefaultOrganizationId, setCreateDefaultOrganizationId] = useState('')
 
   const [isSaving, setIsSaving] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
@@ -85,10 +95,13 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
     setName(selectedClient.name)
     setStatus(selectedClient.isActive ? 'active' : 'inactive')
     setRedirectUriText(toRedirectUriLines(selectedClient.allowedRedirectUris))
+    setDefaultOrganizationId(selectedClient.defaultOrganizationId ?? '')
     setUpdatedAt(selectedClient.updatedAt)
     setRevealedSecret('')
     setRevealedSecretClientId('')
   }, [selectedClient])
+
+  const selectedOrganization = organizations.find((organization) => organization.id === defaultOrganizationId) ?? null
 
   async function copyText(value: string, successTitle: string) {
     try {
@@ -140,6 +153,7 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
           clientId: createClientId.trim(),
           isActive: createStatus === 'active',
           allowedRedirectUris: createRedirectUris,
+          defaultOrganizationId: createDefaultOrganizationId || null,
         }),
       })
 
@@ -155,6 +169,7 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
         name: result.data.name,
         isActive: result.data.isActive,
         allowedRedirectUris: result.data.allowedRedirectUris,
+        defaultOrganizationId: result.data.defaultOrganizationId ?? null,
         createdAt: result.data.createdAt,
         updatedAt: result.data.updatedAt,
       }
@@ -165,6 +180,7 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
       setCreateClientId('')
       setCreateStatus('active')
       setCreateRedirectUriText('')
+      setCreateDefaultOrganizationId('')
       setRevealedSecret(result.data.clientSecret || '')
       setRevealedSecretClientId(nextClient.clientId)
       toast({ title: 'OAuth 客户端已创建', description: '客户端密钥已生成，请立即复制保存。' })
@@ -191,6 +207,7 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
           name: name.trim(),
           isActive: status === 'active',
           allowedRedirectUris: redirectUris,
+          defaultOrganizationId: defaultOrganizationId || null,
         }),
       })
 
@@ -281,6 +298,21 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>默认归属组织</Label>
+              <select
+                value={createDefaultOrganizationId}
+                onChange={(event) => setCreateDefaultOrganizationId(event.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">不自动绑定</option>
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name} ({organization.type === 'department' ? '部门' : organization.type === 'company' ? '公司' : '团队'})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>取消</Button>
@@ -316,6 +348,12 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
                     <Link2 className="h-3.5 w-3.5" />
                     {client.allowedRedirectUris.length} 个回调地址
                   </div>
+                  {client.defaultOrganizationId ? (
+                    <div className={cn('mt-2 text-xs', isSelected ? 'text-slate-300' : 'text-slate-500')}>
+                      默认归属：
+                      {organizations.find((organization) => organization.id === client.defaultOrganizationId)?.name ?? '已删除组织'}
+                    </div>
+                  ) : null}
                 </button>
               )
             })}
@@ -388,12 +426,37 @@ export function OAuthClientsManager({ initialClients }: OAuthClientsManagerProps
                 <Textarea value={redirectUriText} onChange={(event) => setRedirectUriText(event.target.value)} className="min-h-[180px] font-mono text-sm leading-6" />
               </div>
 
+              <div className="space-y-2">
+                <Label>默认归属组织</Label>
+                <select
+                  value={defaultOrganizationId}
+                  onChange={(event) => setDefaultOrganizationId(event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">不自动绑定</option>
+                  {organizations.map((organization) => (
+                    <option key={organization.id} value={organization.id}>
+                      {organization.name} ({organization.type === 'department' ? '部门' : organization.type === 'company' ? '公司' : '团队'})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-sm leading-6 text-slate-500">
+                  选择后，外部产品通过当前 `client_id` 进入统一登录页时，普通用户登录/自动注册会自动归属到该组织节点。需要按部门落位时，直接选择部门节点即可。
+                </p>
+                {selectedOrganization ? (
+                  <p className="text-sm text-slate-700">
+                    当前绑定：{selectedOrganization.name} ({selectedOrganization.type === 'department' ? '部门' : selectedOrganization.type === 'company' ? '公司' : '团队'})
+                  </p>
+                ) : null}
+              </div>
+
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" onClick={handleSave} disabled={isSaving}>{isSaving ? '保存中...' : '保存配置'}</Button>
                 <Button type="button" variant="outline" onClick={() => {
                   setName(selectedClient.name)
                   setStatus(selectedClient.isActive ? 'active' : 'inactive')
                   setRedirectUriText(toRedirectUriLines(selectedClient.allowedRedirectUris))
+                  setDefaultOrganizationId(selectedClient.defaultOrganizationId ?? '')
                   setUpdatedAt(selectedClient.updatedAt)
                   setRevealedSecret('')
                   setRevealedSecretClientId('')

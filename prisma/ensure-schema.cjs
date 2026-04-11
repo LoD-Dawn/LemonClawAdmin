@@ -39,8 +39,6 @@ async function ensureUserAccountTypeColumn(prisma) {
       FROM "users"
       WHERE "account_type" IS NULL
         OR "account_type" NOT IN ('consumer', 'enterprise')
-        OR ("organization_id" = '${DEFAULT_CONSUMER_ORGANIZATION_ID}' AND "account_type" <> 'consumer')
-        OR ("organization_id" <> '${DEFAULT_CONSUMER_ORGANIZATION_ID}' AND "account_type" <> 'enterprise')
     `
   )
 
@@ -55,13 +53,25 @@ async function ensureUserAccountTypeColumn(prisma) {
         END
         WHERE "account_type" IS NULL
           OR "account_type" NOT IN ('consumer', 'enterprise')
-          OR ("organization_id" = '${DEFAULT_CONSUMER_ORGANIZATION_ID}' AND "account_type" <> 'consumer')
-          OR ("organization_id" <> '${DEFAULT_CONSUMER_ORGANIZATION_ID}' AND "account_type" <> 'enterprise')
       `
     )
     console.log('[db:ensure-schema] users.account_type values backfilled')
   } else {
     console.log('[db:ensure-schema] users.account_type values already valid')
+  }
+}
+
+async function ensureOAuthClientDefaultOrganizationColumn(prisma) {
+  const columns = await prisma.$queryRawUnsafe("PRAGMA table_info('oauth_clients')")
+  const hasDefaultOrganizationId = columns.some((column) => column.name === 'default_organization_id')
+
+  if (!hasDefaultOrganizationId) {
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "oauth_clients" ADD COLUMN "default_organization_id" TEXT;'
+    )
+    console.log('[db:ensure-schema] Added oauth_clients.default_organization_id column')
+  } else {
+    console.log('[db:ensure-schema] oauth_clients.default_organization_id already exists')
   }
 }
 
@@ -170,6 +180,7 @@ async function main() {
   try {
     await ensureUserAccountTypeColumn(prisma)
     await ensureUserPhoneColumn(prisma)
+    await ensureOAuthClientDefaultOrganizationColumn(prisma)
     await ensurePhoneVerificationCodesTable(prisma)
     await ensureDefaultOrganizations(prisma)
   } finally {

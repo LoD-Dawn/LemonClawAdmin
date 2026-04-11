@@ -17,6 +17,7 @@ import {
   PHONE_VERIFICATION_PURPOSE_LOGIN,
 } from '@/lib/phone-verification'
 import { createSelfServiceConsumerRegistrationQuota } from '@/lib/user-claw-quota-policy'
+import { resolveLoginClientBinding } from '@/lib/login-client-binding'
 
 const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
 
@@ -57,15 +58,19 @@ function toAuthUser(user: Omit<AuthUserRecord, 'isActive'>) {
   }
 }
 
-async function authenticateConsumerByPhoneCode(phoneInput: string, smsCode: string) {
+async function authenticateConsumerByPhoneCode(phoneInput: string, smsCode: string, loginClientId?: string) {
   if (!isPhoneFormatValid(phoneInput) || getPhoneVerificationCodeErrorMessage(smsCode)) {
     return null
   }
 
   const registrationQuota = createSelfServiceConsumerRegistrationQuota()
   let autoRegistered = false
+  let boundOrganizationId: string | null = null
+  let boundOrganizationName: string | null = null
+  let bindingApplied = false
 
   const user = await db.$transaction(async (tx) => {
+    const binding = await resolveLoginClientBinding(tx, loginClientId)
     const normalizedPhone = await consumePhoneVerificationCode(
       tx,
       phoneInput,
@@ -94,16 +99,53 @@ async function authenticateConsumerByPhoneCode(phoneInput: string, smsCode: stri
         throw new Error('PHONE_LOGIN_NOT_SUPPORTED_FOR_ACCOUNT')
       }
 
+      if (binding) {
+        boundOrganizationId = binding.organizationId
+        boundOrganizationName = binding.organizationName
+
+        if (existingUser.organizationId !== binding.organizationId) {
+          bindingApplied = true
+          return tx.user.update({
+            where: { id: existingUser.id },
+            data: {
+              organizationId: binding.organizationId,
+            },
+            select: {
+              id: true,
+              email: true,
+              phone: true,
+              name: true,
+              accountType: true,
+              isSuperAdmin: true,
+              organizationId: true,
+              isDepartmentAdmin: true,
+              departmentId: true,
+              isActive: true,
+            },
+          })
+        }
+      }
+
       return existingUser
     }
 
-    const defaultOrganization = await tx.organization.findUnique({
-      where: { id: DEFAULT_CONSUMER_ORGANIZATION_ID },
-      select: { id: true },
-    })
+    let organizationId = DEFAULT_CONSUMER_ORGANIZATION_ID
+    if (binding) {
+      organizationId = binding.organizationId
+      boundOrganizationId = binding.organizationId
+      boundOrganizationName = binding.organizationName
+      bindingApplied = true
+    } else {
+      const defaultOrganization = await tx.organization.findUnique({
+        where: { id: DEFAULT_CONSUMER_ORGANIZATION_ID },
+        select: { id: true },
+      })
 
-    if (!defaultOrganization) {
-      throw new Error('DEFAULT_CONSUMER_ORGANIZATION_MISSING')
+      if (!defaultOrganization) {
+        throw new Error('DEFAULT_CONSUMER_ORGANIZATION_MISSING')
+      }
+
+      organizationId = defaultOrganization.id
     }
 
     const createdUser = await tx.user.create({
@@ -113,7 +155,7 @@ async function authenticateConsumerByPhoneCode(phoneInput: string, smsCode: stri
         phone: normalizedPhone,
         passwordHash: await bcrypt.hash(randomUUID(), 12),
         accountType: 'consumer',
-        organizationId: defaultOrganization.id,
+        organizationId,
         isSuperAdmin: false,
         isDepartmentAdmin: false,
         departmentId: null,
@@ -159,19 +201,23 @@ async function authenticateConsumerByPhoneCode(phoneInput: string, smsCode: stri
     targetName: user.email,
     targetUserId: user.id,
     summary: `${user.name || user.email} 通过手机号验证码登录个人工作台`,
-    metadata: {
-      entryMode: 'consumer',
-      loginIdentifierType: 'phone_sms_code',
-      phone: user.phone,
-      requiresPhoneBinding: false,
+      metadata: {
+        entryMode: 'consumer',
+        loginIdentifierType: 'phone_sms_code',
+        phone: user.phone,
+        requiresPhoneBinding: false,
       accountType: user.accountType,
-      isSuperAdmin: user.isSuperAdmin,
-      isDepartmentAdmin: user.isDepartmentAdmin,
-      organizationId: user.organizationId,
-      departmentId: user.departmentId,
-      autoRegistered,
-    },
-  })
+        isSuperAdmin: user.isSuperAdmin,
+        isDepartmentAdmin: user.isDepartmentAdmin,
+        organizationId: user.organizationId,
+        departmentId: user.departmentId,
+        autoRegistered,
+        loginClientId: loginClientId ?? null,
+        boundOrganizationId,
+        boundOrganizationName,
+        bindingApplied,
+      },
+    })
 
   return toAuthUser(user)
 }
@@ -184,11 +230,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       id: 'credentials',
       name: 'credentials',
-      credentials: {
-        identifier: { label: 'Identifier', type: 'text' },
-        password: { label: 'Password', type: 'password' },
-        entryMode: { label: 'Entry Mode', type: 'text' }
-      },
+        credentials: {
+          identifier: { label: 'Identifier', type: 'text' },
+          password: { label: 'Password', type: 'password' },
+          entryMode: { label: 'Entry Mode', type: 'text' },
+          clientId: { label: 'Client Id', type: 'text' },
+        },
       async authorize(credentials) {
         if (!credentials?.identifier || !credentials?.password) {
           return null
@@ -238,33 +285,66 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null
         }
 
-        if (!canUserAccessLoginEntryMode(user, entryMode)) {
+        let effectiveUser = user
+        let boundOrganizationId: string | null = null
+        let boundOrganizationName: string | null = null
+        let bindingApplied = false
+
+        if (entryMode === 'consumer' && user.accountType === 'consumer') {
+          effectiveUser = await db.$transaction(async (tx) => {
+            const binding = await resolveLoginClientBinding(tx, String(credentials.clientId || ''))
+            if (!binding) {
+              return user
+            }
+
+            boundOrganizationId = binding.organizationId
+            boundOrganizationName = binding.organizationName
+
+            if (user.organizationId === binding.organizationId) {
+              return user
+            }
+
+            bindingApplied = true
+            return tx.user.update({
+              where: { id: user.id },
+              data: {
+                organizationId: binding.organizationId,
+              },
+            })
+          })
+        }
+
+        if (!canUserAccessLoginEntryMode(effectiveUser, entryMode)) {
           return null
         }
 
         await recordOperationLog({
-          actor: user,
+          actor: effectiveUser,
           module: 'auth',
           action: 'auth.login',
           targetType: 'auth_session',
-          targetId: user.id,
-          targetName: user.email,
-          targetUserId: user.id,
-          summary: `${user.name || user.email} 登录${entryMode === 'enterprise' ? '企业工作区' : '个人工作台'}`,
+          targetId: effectiveUser.id,
+          targetName: effectiveUser.email,
+          targetUserId: effectiveUser.id,
+          summary: `${effectiveUser.name || effectiveUser.email} 登录${entryMode === 'enterprise' ? '企业工作区' : '个人工作台'}`,
           metadata: {
             entryMode,
             loginIdentifierType,
-            phone: user.phone,
-            requiresPhoneBinding: user.accountType === 'consumer' && !user.phone,
-            accountType: user.accountType,
-            isSuperAdmin: user.isSuperAdmin,
-            isDepartmentAdmin: user.isDepartmentAdmin,
-            organizationId: user.organizationId,
-            departmentId: user.departmentId,
+            phone: effectiveUser.phone,
+            requiresPhoneBinding: effectiveUser.accountType === 'consumer' && !effectiveUser.phone,
+            accountType: effectiveUser.accountType,
+            isSuperAdmin: effectiveUser.isSuperAdmin,
+            isDepartmentAdmin: effectiveUser.isDepartmentAdmin,
+            organizationId: effectiveUser.organizationId,
+            departmentId: effectiveUser.departmentId,
+            loginClientId: credentials.clientId ? String(credentials.clientId) : null,
+            boundOrganizationId,
+            boundOrganizationName,
+            bindingApplied,
           },
         })
 
-        return toAuthUser(user)
+        return toAuthUser(effectiveUser)
       }
     }),
     Credentials({
@@ -273,13 +353,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         phone: { label: 'Phone', type: 'text' },
         smsCode: { label: 'Sms Code', type: 'text' },
+        clientId: { label: 'Client Id', type: 'text' },
       },
       async authorize(credentials) {
         const phone = String(credentials?.phone || '').trim()
         const smsCode = String(credentials?.smsCode || '').trim()
+        const clientId = String(credentials?.clientId || '').trim()
 
         try {
-          return await authenticateConsumerByPhoneCode(phone, smsCode)
+          return await authenticateConsumerByPhoneCode(phone, smsCode, clientId)
         } catch (error) {
           if (!(error instanceof Error) || (
             error.message !== 'PHONE_LOGIN_NOT_SUPPORTED_FOR_ACCOUNT'

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -12,16 +13,19 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   ArrowRight,
-  BriefcaseBusiness,
   Globe,
   LockKeyhole,
   Mail,
   ShieldCheck,
   Smartphone,
-  UserRound,
 } from 'lucide-react'
 
 interface LoginFormClientProps {
+  entryMode: EntryMode
+  showEntrySwitcher?: boolean
+  minimal?: boolean
+  titleOverride?: string
+  descriptionOverride?: string
   oauthParams?: {
     client_id: string
     redirect_uri: string
@@ -32,24 +36,16 @@ interface LoginFormClientProps {
 
 type EntryMode = 'consumer' | 'enterprise'
 
-export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
+export function LoginFormClient({
+  entryMode,
+  showEntrySwitcher = true,
+  minimal = false,
+  titleOverride,
+  descriptionOverride,
+  oauthParams,
+}: LoginFormClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialEntryMode: EntryMode = (() => {
-    const queryEntryMode = searchParams.get('entryMode')
-    if (queryEntryMode === 'enterprise') {
-      return 'enterprise'
-    }
-
-    const callbackUrl = searchParams.get('callbackUrl') || ''
-    if (callbackUrl.startsWith('/dashboard')) {
-      return 'enterprise'
-    }
-
-    return 'consumer'
-  })()
-
-  const [entryMode, setEntryMode] = useState<EntryMode>(initialEntryMode)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -72,6 +68,10 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
   const isDesktopAuthFlow = hasRedirectUri && !oauth.client_id
   const isAuthFlow = isOAuthFlow || isDesktopAuthFlow
   const scopeTokens = oauth.scope.split(/\s+/).filter(Boolean)
+  const queryString = searchParams.toString()
+  const alternateEntryMode: EntryMode = entryMode === 'enterprise' ? 'consumer' : 'enterprise'
+  const alternateEntryLabel = entryMode === 'enterprise' ? '普通用户登录' : '企业用户登录'
+  const alternateEntryHref = `/login/${alternateEntryMode}${queryString ? `?${queryString}` : ''}`
 
   let redirectHost = ''
   if (oauth.redirect_uri) {
@@ -90,17 +90,20 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
         .join(' ')
     : ''
 
-  const title = isAuthFlow
+  const defaultTitle = isAuthFlow
     ? '登录并继续授权'
     : entryMode === 'enterprise'
       ? '企业用户登录'
       : '手机号验证码登录'
 
-  const description = isAuthFlow
+  const defaultDescription = isAuthFlow
     ? '完成登录后，系统会继续当前授权流程并跳转回目标应用。'
     : entryMode === 'enterprise'
       ? '适用于企业成员、部门管理员和平台管理员。企业账号通常由管理员统一开通。'
       : '适用于普通用户查看资源、提交申请和管理个人工作区。首次使用的手机号完成验证码校验后会自动创建账号。'
+
+  const title = titleOverride || defaultTitle
+  const description = descriptionOverride || defaultDescription
 
   async function finishAuthFlow() {
     if (isOAuthFlow) {
@@ -158,6 +161,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
       identifier,
       password,
       entryMode: loginEntryMode,
+      clientId: oauth.client_id || undefined,
       redirect: false,
     })
 
@@ -172,6 +176,7 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
     const result = await signIn('consumer-phone-code', {
       phone,
       smsCode,
+      clientId: oauth.client_id || undefined,
       redirect: false,
     })
 
@@ -219,22 +224,6 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
       setError(submitError instanceof Error ? submitError.message : '提交失败，请稍后重试。')
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  function resetConsumerState() {
-    setConsumerPhone('')
-    setConsumerSmsCode('')
-    setSmsCooldown(0)
-    setIsSendingSmsCode(false)
-  }
-
-  function handleEntryModeChange(nextMode: EntryMode) {
-    setEntryMode(nextMode)
-    setError('')
-    setSuccessMessage('')
-    if (nextMode !== 'consumer') {
-      resetConsumerState()
     }
   }
 
@@ -289,21 +278,23 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
   return (
     <Card className="login-panel login-panel-glow w-full overflow-hidden rounded-[2rem] border-white/70 bg-white/90">
       <CardHeader className="space-y-3 p-5 pb-0 sm:p-6 sm:pb-0">
-        <div className="flex items-start justify-between gap-4">
-          <div className="inline-flex items-center gap-3 rounded-full border border-orange-100 bg-orange-50/90 px-4 py-2 text-sm text-orange-800">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 text-white shadow-[0_14px_24px_-18px_rgba(249,115,22,0.85)]">
-              <ShieldCheck className="h-4 w-4" />
+        {!minimal ? (
+          <div className="flex items-start justify-between gap-4">
+            <div className="inline-flex items-center gap-3 rounded-full border border-orange-100 bg-orange-50/90 px-4 py-2 text-sm text-orange-800">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 text-white shadow-[0_14px_24px_-18px_rgba(249,115,22,0.85)]">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-orange-500">Secure Entry</p>
+                <p className="font-medium text-slate-900">Access Portal</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-orange-500">Secure Entry</p>
-              <p className="font-medium text-slate-900">Access Portal</p>
-            </div>
-          </div>
 
-          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
-            {isAuthFlow ? '授权流程' : '统一登录'}
+            <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+              {isAuthFlow ? '授权流程' : '统一登录'}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="space-y-3">
           <CardTitle className="font-client-serif text-3xl tracking-tight text-slate-950 sm:text-[1.95rem]">
@@ -348,48 +339,14 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => handleEntryModeChange('consumer')}
-            className={cn(
-              'flex min-h-[72px] cursor-pointer items-center gap-3 rounded-[1.5rem] border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2',
-              entryMode === 'consumer'
-                ? 'border-orange-200 bg-orange-50/90 shadow-[0_18px_36px_-30px_rgba(249,115,22,0.65)]'
-                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-            )}
-          >
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white">
-              <UserRound className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="font-medium text-slate-900">普通用户</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleEntryModeChange('enterprise')}
-            className={cn(
-              'flex min-h-[72px] cursor-pointer items-center gap-3 rounded-[1.5rem] border p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 focus-visible:ring-offset-2',
-              entryMode === 'enterprise'
-                ? 'border-slate-900 bg-slate-900 text-white shadow-[0_20px_42px_-34px_rgba(15,23,42,0.85)]'
-                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-            )}
-          >
-            <div
-              className={cn(
-                'flex size-10 shrink-0 items-center justify-center rounded-full',
-                entryMode === 'enterprise' ? 'bg-white/10 text-white' : 'bg-slate-900 text-white'
-              )}
-            >
-              <BriefcaseBusiness className="h-4 w-4" />
-            </div>
-            <div>
-              <p className={cn('font-medium', entryMode === 'enterprise' ? 'text-white' : 'text-slate-900')}>企业用户</p>
-            </div>
-          </button>
-        </div>
+        {showEntrySwitcher ? (
+          <div className="rounded-[1.4rem] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+            当前入口：<span className="font-medium text-slate-900">{entryMode === 'enterprise' ? '企业用户登录' : '普通用户登录'}</span>
+            <Link href={alternateEntryHref} className="ml-2 font-medium text-orange-600 underline-offset-4 hover:underline">
+              切换到{alternateEntryLabel}
+            </Link>
+          </div>
+        ) : null}
       </CardHeader>
 
       <CardContent className="p-5 pt-4 sm:p-6 sm:pt-4">
@@ -524,14 +481,16 @@ export function LoginFormClient({ oauthParams }: LoginFormClientProps) {
           </Button>
         </form>
 
-        <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] leading-5 text-slate-400">
-          <p className="max-w-[16rem]">
-            登录后将按角色权限访问对应资源。
-          </p>
-          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-500">
-            TLS / OAuth
+        {!minimal ? (
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] leading-5 text-slate-400">
+            <p className="max-w-[16rem]">
+              登录后将按角色权限访问对应资源。
+            </p>
+            <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-500">
+              TLS / OAuth
+            </div>
           </div>
-        </div>
+        ) : null}
       </CardContent>
     </Card>
   )

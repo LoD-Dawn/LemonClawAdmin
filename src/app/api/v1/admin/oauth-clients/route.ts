@@ -20,6 +20,7 @@ const createOAuthClientSchema = z.object({
   clientId: z.string().trim().regex(clientIdPattern, '客户端 ID 仅支持字母、数字、点、下划线和中划线，长度 3-64。'),
   isActive: z.boolean().default(true),
   allowedRedirectUris: z.array(z.string().trim().min(1)).min(1).max(20),
+  defaultOrganizationId: z.string().uuid().nullable().optional(),
 })
 
 function serializeClient(client: {
@@ -28,6 +29,7 @@ function serializeClient(client: {
   name: string
   isActive: boolean
   allowedRedirectUris: string | string[] | null
+  defaultOrganizationId: string | null
   createdAt: Date
   updatedAt: Date
 }) {
@@ -37,6 +39,7 @@ function serializeClient(client: {
     name: client.name,
     isActive: client.isActive,
     allowedRedirectUris: parseAllowedRedirectUris(client.allowedRedirectUris),
+    defaultOrganizationId: client.defaultOrganizationId,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   }
@@ -93,6 +96,20 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if (parsed.data.defaultOrganizationId) {
+    const organization = await db.organization.findUnique({
+      where: { id: parsed.data.defaultOrganizationId },
+      select: { id: true },
+    })
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: '默认组织不存在。', code: 'NOT_FOUND_ORGANIZATION' },
+        { status: 400 }
+      )
+    }
+  }
+
   const plainSecret = generateOAuthClientSecret()
   const clientSecretHash = await bcrypt.hash(plainSecret, 12)
 
@@ -104,6 +121,7 @@ export async function POST(request: NextRequest) {
         name: parsed.data.name,
         isActive: parsed.data.isActive,
         allowedRedirectUris: serializeAllowedRedirectUris(parsed.data.allowedRedirectUris),
+        defaultOrganizationId: parsed.data.defaultOrganizationId ?? null,
       },
     })
 
@@ -120,6 +138,7 @@ export async function POST(request: NextRequest) {
         clientId: createdClient.clientId,
         isActive: createdClient.isActive,
         allowedRedirectUris: parsed.data.allowedRedirectUris,
+        defaultOrganizationId: createdClient.defaultOrganizationId,
       },
     })
 

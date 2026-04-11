@@ -387,6 +387,7 @@ model OAuthClient {
   apiKeyHash           String?  @map("api_key_hash")
   name                 String
   allowedRedirectUris  String   @map("allowed_redirect_uris")
+  defaultOrganizationId String? @map("default_organization_id")
   isActive             Boolean  @default(true) @map("is_active")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")

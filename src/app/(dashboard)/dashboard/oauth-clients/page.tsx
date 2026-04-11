@@ -30,12 +30,25 @@ export default async function OAuthClientsPage() {
     ],
   })
 
+  const organizations = await db.organization.findMany({
+    orderBy: [
+      { path: 'asc' },
+      { name: 'asc' },
+    ],
+    select: {
+      id: true,
+      name: true,
+      type: true,
+    },
+  })
+
   const serializedClients = clients.map((client) => ({
     id: client.id,
     clientId: client.clientId,
     name: client.name,
     isActive: client.isActive,
     allowedRedirectUris: parseAllowedRedirectUris(client.allowedRedirectUris),
+    defaultOrganizationId: client.defaultOrganizationId,
     createdAt: client.createdAt.toISOString(),
     updatedAt: client.updatedAt.toISOString(),
   }))
@@ -81,7 +94,7 @@ export default async function OAuthClientsPage() {
           className="md:col-span-2 xl:col-span-1"
         />
       </div>
-      <OAuthClientsManager initialClients={serializedClients} />
+      <OAuthClientsManager initialClients={serializedClients} organizations={organizations} />
     </div>
   )
 }

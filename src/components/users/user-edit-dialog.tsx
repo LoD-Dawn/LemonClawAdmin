@@ -114,9 +114,9 @@ export function UserEditDialog({
   const [error, setError] = useState('')
 
   const defaultConsumerOrganization = organizations.find((organization) => isDefaultConsumerOrganizationId(organization.id)) ?? null
-  const effectiveOrganizationId = accountType === 'consumer'
+  const effectiveOrganizationId = organizationId || (accountType === 'consumer'
     ? defaultConsumerOrganization?.id ?? DEFAULT_CONSUMER_ORGANIZATION_ID
-    : organizationId
+    : '')
   const selectedOrganization = getOrganizationById(organizations, effectiveOrganizationId)
   const allowedRoles = getAllowedUserRoles(selectedOrganization, accountType)
   const availableDepartments = getAssignableDepartments(organizations, effectiveOrganizationId, accountType)
@@ -179,8 +179,8 @@ export function UserEditDialog({
     e.preventDefault()
     if (!user) return
 
-    if (accountType === 'consumer' && !defaultConsumerOrganization) {
-      setError('默认普通用户组织不存在')
+    if (!effectiveOrganizationId) {
+      setError('请选择所属组织')
       return
     }
 
@@ -244,9 +244,9 @@ export function UserEditDialog({
           ...(phone.trim() ? { phone } : {}),
           ...(password ? { password } : {}),
           accountType,
-          organizationId: accountType === 'consumer'
+          organizationId: organizationId || (accountType === 'consumer'
             ? (defaultConsumerOrganization?.id ?? DEFAULT_CONSUMER_ORGANIZATION_ID)
-            : organizationId || null,
+            : null),
           isSuperAdmin: role === 'super_admin',
           isDepartmentAdmin: role === 'department_admin',
           departmentId: role === 'department_admin' ? (departmentId || null) : null,
@@ -365,20 +365,19 @@ export function UserEditDialog({
                 <Label htmlFor="edit-organization">组织</Label>
                 <select
                   id="edit-organization"
-                  value={accountType === 'consumer' ? (defaultConsumerOrganization?.id ?? '') : organizationId}
+                  value={effectiveOrganizationId}
                   onChange={e => setOrganizationId(e.target.value)}
                   className="w-full border rounded-md px-3 py-2 h-10 bg-white"
-                  disabled={accountType === 'consumer'}
                 >
                   {accountType === 'enterprise' ? <option value="">无</option> : null}
                   {(accountType === 'consumer'
-                    ? organizations.filter((organization) => isDefaultConsumerOrganizationId(organization.id))
+                    ? organizations
                     : enterpriseOrganizations).map((organization) => (
                     <option key={organization.id} value={organization.id}>{organization.name}</option>
                   ))}
                 </select>
                 {accountType === 'consumer' ? (
-                  <p className="text-sm text-muted-foreground">普通用户账号固定归属默认普通用户组织。</p>
+                  <p className="text-sm text-muted-foreground">普通用户账号仍通过普通用户入口登录，可按产品需要归属到任意组织节点；如果选择部门节点，即表示按部门落位。</p>
                 ) : null}
               </div>
             </div>

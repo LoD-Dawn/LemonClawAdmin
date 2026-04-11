@@ -106,9 +106,7 @@ export function normalizeUserPermissionInput(
   const isSuperAdmin = input.isSuperAdmin ?? false
   const isDepartmentAdmin = isSuperAdmin ? false : (input.isDepartmentAdmin ?? false)
   const departmentId = isSuperAdmin || !isDepartmentAdmin ? null : (input.departmentId ?? null)
-  const organizationId = accountType === 'consumer'
-    ? DEFAULT_CONSUMER_ORGANIZATION_ID
-    : (input.organizationId ?? null)
+  const organizationId = input.organizationId ?? (accountType === 'consumer' ? DEFAULT_CONSUMER_ORGANIZATION_ID : null)
 
   return {
     accountType,
@@ -193,10 +191,17 @@ export function validateUserPermissionScope({
     }
   }
 
-  if (data.accountType === 'consumer' && data.organizationId !== DEFAULT_CONSUMER_ORGANIZATION_ID) {
+  if (data.accountType === 'consumer' && (data.isSuperAdmin || data.isDepartmentAdmin)) {
     return {
-      error: '普通用户账号必须归属默认普通用户组织',
-      code: 'VALIDATION_CONSUMER_ACCOUNT_ORG_REQUIRED',
+      error: '普通用户账号不能配置管理员角色',
+      code: 'VALIDATION_CONSUMER_ACCOUNT_ROLE_FORBIDDEN',
+    }
+  }
+
+  if (data.accountType === 'consumer' && data.departmentId) {
+    return {
+      error: '普通用户账号不能配置管理部门',
+      code: 'VALIDATION_CONSUMER_ACCOUNT_DEPARTMENT_FORBIDDEN',
     }
   }
 

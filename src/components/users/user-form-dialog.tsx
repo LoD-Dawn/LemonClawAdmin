@@ -44,9 +44,9 @@ export function UserFormDialog({
   const [quotaExpiresAt, setQuotaExpiresAt] = useState('')
 
   const defaultConsumerOrganization = organizations.find((organization) => isDefaultConsumerOrganizationId(organization.id)) ?? null
-  const effectiveOrganizationId = accountType === 'consumer'
+  const effectiveOrganizationId = organizationId || (accountType === 'consumer'
     ? defaultConsumerOrganization?.id ?? DEFAULT_CONSUMER_ORGANIZATION_ID
-    : organizationId
+    : '')
   const selectedOrganization = getOrganizationById(organizations, effectiveOrganizationId)
   const allowedRoles = getAllowedUserRoles(selectedOrganization, accountType)
   const availableDepartments = getAssignableDepartments(organizations, effectiveOrganizationId, accountType)
@@ -113,9 +113,9 @@ export function UserFormDialog({
       phone: formData.get('phone') as string,
       password: formData.get('password') as string,
       accountType,
-      organizationId: accountType === 'consumer'
+      organizationId: organizationId || (accountType === 'consumer'
         ? (defaultConsumerOrganization?.id ?? DEFAULT_CONSUMER_ORGANIZATION_ID)
-        : organizationId || null,
+        : null),
       isSuperAdmin: role === 'super_admin',
       isDepartmentAdmin: role === 'department_admin',
       departmentId: role === 'department_admin'
@@ -137,7 +137,7 @@ export function UserFormDialog({
     if (!data.phone) newErrors.phone = '手机号不能为空'
     if (data.phone && !isPhoneFormatValid(data.phone)) newErrors.phone = '请输入有效的中国大陆手机号'
     if (!data.password || data.password.length < 8) newErrors.password = '密码至少8位'
-    if (accountType === 'consumer' && !defaultConsumerOrganization) newErrors.accountType = '默认普通用户组织不存在'
+    if (!data.organizationId) newErrors.organizationId = '请选择所属组织'
     if (!isUnlimitedRole && (!Number.isFinite(parsedCreditBalance) || parsedCreditBalance < 0)) newErrors.creditBalance = '积分不能小于 0'
     if (!isUnlimitedRole && !normalizedPricingVersion) newErrors.pricingVersion = '计费版本不能为空'
     if (data.isDepartmentAdmin && !data.departmentId) newErrors.departmentId = '请选择管理部门'
@@ -261,19 +261,19 @@ export function UserFormDialog({
             <select
               id="organizationId"
               name="organizationId"
-              value={accountType === 'consumer' ? (defaultConsumerOrganization?.id ?? '') : organizationId}
+              value={effectiveOrganizationId}
               onChange={(e) => setOrganizationId(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 h-10 bg-white"
-              disabled={accountType === 'consumer'}
+              className={`w-full border rounded-md px-3 py-2 h-10 bg-white ${errors.organizationId ? 'border-destructive' : ''}`}
             >
               {accountType === 'enterprise' ? <option value="">无</option> : null}
-              {(accountType === 'consumer' ? organizations.filter((organization) => isDefaultConsumerOrganizationId(organization.id)) : enterpriseOrganizations).map(org => (
+              {(accountType === 'consumer' ? organizations : enterpriseOrganizations).map(org => (
                 <option key={org.id} value={org.id}>{org.name}</option>
               ))}
             </select>
             {accountType === 'consumer' ? (
-              <p className="text-sm text-muted-foreground">普通用户账号固定归属默认普通用户组织，并通过普通用户入口登录。</p>
+              <p className="text-sm text-muted-foreground">普通用户账号仍通过普通用户入口登录，可按产品需要归属到任意组织节点；如果选择部门节点，即表示按部门落位。</p>
             ) : null}
+            {errors.organizationId && <p className="text-sm text-destructive">{errors.organizationId}</p>}
             </div>
             <div className="space-y-2">
             <Label htmlFor="role">角色</Label>

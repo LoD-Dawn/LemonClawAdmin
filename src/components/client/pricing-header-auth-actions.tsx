@@ -22,7 +22,7 @@ export function PricingHeaderAuthActions({ currentUserLabel }: PricingHeaderAuth
         className="rounded-full px-4"
         onClick={async () => {
           await signOut({ redirect: false })
-          window.location.href = '/login'
+          window.location.href = '/login/consumer'
         }}
         type="button"
         variant="outline"

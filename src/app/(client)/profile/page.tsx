@@ -100,7 +100,7 @@ export default async function ProfilePage() {
   const session = await auth()
 
   if (!session?.user) {
-    redirect('/login?callbackUrl=%2Fprofile')
+    redirect('/login/consumer?callbackUrl=%2Fprofile')
   }
 
   const now = new Date()
@@ -209,7 +209,7 @@ export default async function ProfilePage() {
   ])
 
   if (!user) {
-    redirect('/login?callbackUrl=%2Fprofile')
+    redirect('/login/consumer?callbackUrl=%2Fprofile')
   }
 
   const isUnlimited = user.isSuperAdmin || user.isDepartmentAdmin

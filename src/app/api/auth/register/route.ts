@@ -12,6 +12,7 @@ import {
 import { isPhoneFormatValid, maskPhone } from '@/lib/phone'
 import { recordOperationLog } from '@/lib/operation-log'
 import { createSelfServiceConsumerRegistrationQuota } from '@/lib/user-claw-quota-policy'
+import { resolveLoginClientBinding } from '@/lib/login-client-binding'
 
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(50),
@@ -19,6 +20,7 @@ const registerSchema = z.object({
   smsCode: z.string().trim(),
   email: z.string().trim().email().max(255),
   password: z.string().min(8).max(72),
+  clientId: z.string().trim().min(1).max(64).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -51,17 +53,12 @@ export async function POST(request: NextRequest) {
   const email = parsed.data.email.trim().toLowerCase()
   const passwordHash = await bcrypt.hash(parsed.data.password, 12)
   const registrationQuota = createSelfServiceConsumerRegistrationQuota()
+  let boundOrganizationId: string | null = null
+  let boundOrganizationName: string | null = null
 
   try {
     const user = await db.$transaction(async (tx) => {
-      const defaultOrganization = await tx.organization.findUnique({
-        where: { id: DEFAULT_CONSUMER_ORGANIZATION_ID },
-        select: { id: true, name: true },
-      })
-
-      if (!defaultOrganization) {
-        throw new Error('DEFAULT_CONSUMER_ORGANIZATION_MISSING')
-      }
+      const binding = await resolveLoginClientBinding(tx, parsed.data.clientId)
 
       const normalizedPhone = await consumePhoneVerificationCode(
         tx,
@@ -96,6 +93,24 @@ export async function POST(request: NextRequest) {
         throw error
       }
 
+      let organizationId = DEFAULT_CONSUMER_ORGANIZATION_ID
+      if (binding) {
+        organizationId = binding.organizationId
+        boundOrganizationId = binding.organizationId
+        boundOrganizationName = binding.organizationName
+      } else {
+        const defaultOrganization = await tx.organization.findUnique({
+          where: { id: DEFAULT_CONSUMER_ORGANIZATION_ID },
+          select: { id: true },
+        })
+
+        if (!defaultOrganization) {
+          throw new Error('DEFAULT_CONSUMER_ORGANIZATION_MISSING')
+        }
+
+        organizationId = defaultOrganization.id
+      }
+
       const createdUser = await tx.user.create({
         data: {
           name,
@@ -103,7 +118,7 @@ export async function POST(request: NextRequest) {
           phone: normalizedPhone,
           passwordHash,
           accountType: 'consumer',
-          organizationId: defaultOrganization.id,
+          organizationId,
           isSuperAdmin: false,
           isDepartmentAdmin: false,
           departmentId: null,
@@ -150,6 +165,9 @@ export async function POST(request: NextRequest) {
         source: 'self_service_register',
         registrationCredits: registrationQuota.creditBalance,
         quotaExpiresAt: registrationQuota.expiresAt.toISOString(),
+        loginClientId: parsed.data.clientId ?? null,
+        boundOrganizationId,
+        boundOrganizationName,
       },
     })
 
@@ -202,6 +220,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: '默认普通用户组织不存在，请先执行项目初始化。', code: 'DEFAULT_CONSUMER_ORG_MISSING' },
         { status: 500 }
+      )
+    }
+
+    if (error instanceof Error && error.message === 'LOGIN_CLIENT_BINDING_ORGANIZATION_NOT_FOUND') {
+      return NextResponse.json(
+        { error: '登录来源绑定的组织不存在，请检查 OAuth 客户端配置。', code: 'LOGIN_CLIENT_BINDING_ORGANIZATION_NOT_FOUND' },
+        { status: 400 }
       )
     }
 

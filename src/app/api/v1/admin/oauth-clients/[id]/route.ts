@@ -14,6 +14,7 @@ const updateOAuthClientSchema = z.object({
   name: z.string().trim().min(1).max(120),
   isActive: z.boolean(),
   allowedRedirectUris: z.array(z.string().trim().min(1)).min(1).max(20),
+  defaultOrganizationId: z.string().uuid().nullable().optional(),
 })
 
 function serializeClient(client: {
@@ -22,6 +23,7 @@ function serializeClient(client: {
   name: string
   isActive: boolean
   allowedRedirectUris: string | string[] | null
+  defaultOrganizationId: string | null
   createdAt: Date
   updatedAt: Date
 }) {
@@ -31,6 +33,7 @@ function serializeClient(client: {
     name: client.name,
     isActive: client.isActive,
     allowedRedirectUris: parseAllowedRedirectUris(client.allowedRedirectUris),
+    defaultOrganizationId: client.defaultOrganizationId,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   }
@@ -73,12 +76,27 @@ export async function PUT(
     )
   }
 
+  if (parsed.data.defaultOrganizationId) {
+    const organization = await db.organization.findUnique({
+      where: { id: parsed.data.defaultOrganizationId },
+      select: { id: true },
+    })
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: '默认组织不存在。', code: 'NOT_FOUND_ORGANIZATION' },
+        { status: 400 }
+      )
+    }
+  }
+
   const updatedClient = await db.oAuthClient.update({
     where: { id },
     data: {
       name: parsed.data.name,
       isActive: parsed.data.isActive,
       allowedRedirectUris: serializeAllowedRedirectUris(parsed.data.allowedRedirectUris),
+      defaultOrganizationId: parsed.data.defaultOrganizationId ?? null,
     },
   })
 
@@ -95,6 +113,7 @@ export async function PUT(
       clientId: updatedClient.clientId,
       isActive: updatedClient.isActive,
       allowedRedirectUris: parsed.data.allowedRedirectUris,
+      defaultOrganizationId: updatedClient.defaultOrganizationId,
     },
   })
 
