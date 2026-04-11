@@ -11,6 +11,7 @@ const routeNames: Record<string, string> = {
   '/dashboard/skills': 'Skills',
   '/dashboard/models': '模型管理',
   '/dashboard/mcps': 'MCPs',
+  '/dashboard/oauth-clients': '第三方接入',
   '/dashboard/desktop-auth': '桌面端登录',
   '/dashboard/approvals': '审核管理',
   '/dashboard/grants': '授权管理',

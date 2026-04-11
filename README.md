@@ -342,6 +342,61 @@ npm run import:resources -- --type mcp --file ./data/mcps.json --mode upsert --r
 3. 系统生成授权码
 4. 外部系统调用 `/api/v1/auth/token` 换取 `access_token`
 
+#### 第三方平台接入步骤
+
+如果你要让 Web、H5、桌面端或其他 SaaS 平台“登录本系统后获取当前用户可用模型”，推荐使用标准 OAuth 授权码模式：
+
+1. 超级管理员进入 `/dashboard/oauth-clients`
+2. 创建一个第三方 OAuth 客户端
+3. 配置平台名称、`client_id`、允许回调地址、启用状态
+4. 保存系统返回的 `client_secret`
+5. 第三方前端跳转到 `/api/v1/auth/authorize`
+6. 第三方服务端用授权码调用 `/api/v1/auth/token`
+7. 拿到 `access_token` 后调用 `/api/external/v1/me/models`
+
+推荐授权地址示例：
+
+```text
+GET /api/v1/auth/authorize
+  ?client_id=acme-chat-web
+  &redirect_uri=https://app.example.com/oauth/callback
+  &state=RANDOM_STATE
+  &scope=models:read quota:read
+```
+
+换取 token 示例：
+
+```http
+POST /api/v1/auth/token
+Content-Type: application/json
+
+{
+  "grant_type": "authorization_code",
+  "code": "AUTH_CODE",
+  "client_id": "acme-chat-web",
+  "client_secret": "YOUR_CLIENT_SECRET",
+  "redirect_uri": "https://app.example.com/oauth/callback"
+}
+```
+
+读取当前登录用户模型：
+
+```http
+GET /api/external/v1/me/models
+Authorization: Bearer ACCESS_TOKEN
+```
+
+如果 token 过期，可继续调用：
+
+```http
+POST /api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "REFRESH_TOKEN"
+}
+```
+
 ### 3. 运行时调用
 
 项目提供了资源运行时调用入口：

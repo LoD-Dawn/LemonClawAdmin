@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { randomBytes } from 'crypto'
 import { db } from '@/lib/db'
 
-const DEFAULT_DESKTOP_CLIENT_ID = process.env.DESKTOP_OAUTH_CLIENT_ID || 'desktop-client'
+export const DEFAULT_DESKTOP_CLIENT_ID = process.env.DESKTOP_OAUTH_CLIENT_ID || 'desktop-client'
 const DEFAULT_DESKTOP_CLIENT_NAME = process.env.DESKTOP_OAUTH_CLIENT_NAME || 'Desktop Client'
 const DEFAULT_DESKTOP_CLIENT_SECRET = process.env.DESKTOP_OAUTH_CLIENT_SECRET || 'desktop-direct-flow'
 const DEFAULT_DESKTOP_REDIRECT_URIS = process.env.DESKTOP_OAUTH_ALLOWED_REDIRECT_URIS || 'diclaw://auth/callback'
@@ -47,6 +47,15 @@ export function serializeAllowedRedirectUris(uris: string[]) {
   return uris.map(normalizeUri).filter(Boolean).join('\n')
 }
 
+export function isValidOAuthRedirectUri(uri: string) {
+  try {
+    const parsed = new URL(uri)
+    return Boolean(parsed.protocol)
+  } catch {
+    return false
+  }
+}
+
 export function matchesAllowedRedirectUri(
   allowedRedirectUris: string | string[] | null | undefined,
   redirectUri: string
@@ -61,6 +70,10 @@ export function getDesktopAllowedRedirectUris() {
 
 export function generateDesktopClientSecret() {
   return `desktop_${randomBytes(24).toString('hex')}`
+}
+
+export function generateOAuthClientSecret() {
+  return `oauth_${randomBytes(24).toString('hex')}`
 }
 
 export async function ensureDesktopOAuthClient() {

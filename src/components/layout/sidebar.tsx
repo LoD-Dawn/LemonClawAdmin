@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
-import { LayoutDashboard, Users, Building2, Box, Bot, Cpu, LogOut, CheckSquare, ShieldCheck, Tags, History, AppWindow, Download, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, Box, Bot, Cpu, LogOut, CheckSquare, ShieldCheck, Tags, History, AppWindow, Download, ChevronRight, PlugZap } from 'lucide-react'
 
 interface NavItem {
   href: string
@@ -72,8 +72,9 @@ export function Sidebar({ user }: SidebarProps) {
         },
         {
           id: 'desktop',
-          title: '桌面端',
+          title: '接入与客户端',
           items: [
+            { href: '/dashboard/oauth-clients', label: '第三方接入', icon: PlugZap },
             { href: '/dashboard/desktop-auth', label: '桌面端登录', icon: AppWindow },
             { href: '/dashboard/desktop-version', label: '桌面端版本', icon: Download },
           ],

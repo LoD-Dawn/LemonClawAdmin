@@ -74,8 +74,8 @@ export function SwaggerUiShell() {
           <div className={styles.heroCard}>
             <h1 className={styles.title}>认证与对外 API 文档</h1>
             <p className={styles.subtitle}>
-              提供 refresh token 刷新，以及当前用户的模型配置、配额、Claw 会话、Skills、MCPs、用户信息与有效性校验接口。
-              外部资源接口支持 Bearer Token 鉴权，也兼容已登录后台的浏览器会话直接调试。
+              提供浏览器会话登录、短信验证码登录、refresh token 刷新，以及当前用户的模型配置、配额、Claw 会话、Skills、MCPs、
+              用户信息与有效性校验接口。外部资源接口支持 Bearer Token 鉴权，也兼容已登录后台的浏览器会话直接调试。
             </p>
             <div className={styles.metaRow}>
               <div className={styles.metaPill}>OpenAPI 3.1</div>

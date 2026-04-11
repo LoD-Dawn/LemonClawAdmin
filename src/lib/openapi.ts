@@ -4,7 +4,7 @@ export function buildOpenApiDocument(origin?: string) {
     info: {
       title: 'Skills MCP API',
       version: '1.0.0',
-      description: '提供给外部系统和桌面端使用的认证与当前用户资源接口，包括 token 刷新、用户信息、模型配置、配额查询、Claw 会话配额结算、Skills、MCPs 以及用户有效性校验。',
+      description: '提供给浏览器会话、外部系统和桌面端使用的认证与当前用户资源接口，包括短信验证码登录、token 刷新、用户信息、模型配置、配额查询、Claw 会话配额结算、Skills、MCPs 以及用户有效性校验。',
     },
     ...(origin
       ? {
@@ -18,10 +18,113 @@ export function buildOpenApiDocument(origin?: string) {
       : {}),
     tags: [
       { name: 'Auth', description: '认证与 token 刷新接口。' },
+      { name: 'Session Auth', description: '浏览器会话、NextAuth 与短信验证码登录接口。' },
       { name: 'Desktop', description: '桌面端公共配置接口。' },
       { name: 'External API', description: '面向第三方集成的当前用户接口。' },
     ],
     paths: {
+      '/api/auth/csrf': {
+        get: {
+          tags: ['Session Auth'],
+          summary: '获取浏览器登录 CSRF Token',
+          description: '直接调用 NextAuth 的 callback 登录接口前，需要先获取 csrfToken，并复用响应中的同源 Cookie。',
+          responses: {
+            '200': {
+              description: 'CSRF Token',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/CsrfTokenResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/auth/login/phone-code': {
+        post: {
+          tags: ['Session Auth'],
+          summary: '发送短信登录验证码',
+          description: '向普通用户手机号发送登录验证码。验证码校验通过后，如该手机号尚未注册，会在登录阶段自动创建普通用户账号。',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/LoginPhoneCodeSendRequest' },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: '发送成功',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PhoneVerificationCodeSendResponse' },
+                },
+              },
+            },
+            '400': {
+              description: '手机号格式不正确',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PhoneVerificationCodeErrorResponse' },
+                },
+              },
+            },
+            '409': {
+              description: '该手机号对应账号不支持普通用户短信登录',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PhoneVerificationCodeErrorResponse' },
+                },
+              },
+            },
+            '429': {
+              description: '发送过于频繁，处于重发冷却中',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PhoneVerificationCodeErrorResponse' },
+                },
+              },
+            },
+            '500': {
+              description: '短信服务未配置或发送失败',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PhoneVerificationCodeErrorResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/auth/callback/consumer-phone-code': {
+        post: {
+          tags: ['Session Auth'],
+          summary: '使用短信验证码建立浏览器会话',
+          description: 'NextAuth Credentials provider 的手机号验证码登录回调。通常由 `next-auth/react` 的 `signIn(\"consumer-phone-code\")` 调用。手动调试时需要先调用 `/api/auth/csrf` 获取 csrfToken，并携带同源 Cookie 与 `application/x-www-form-urlencoded` 表单。',
+          requestBody: {
+            required: true,
+            content: {
+              'application/x-www-form-urlencoded': {
+                schema: { $ref: '#/components/schemas/ConsumerPhoneCodeSignInRequest' },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: '当请求头包含 `X-Auth-Return-Redirect: 1` 时，返回下一跳 URL，并由客户端据此判断登录结果。',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/NextAuthRedirectResponse' },
+                },
+              },
+            },
+            '302': {
+              description: '默认行为为设置会话 Cookie 后重定向到 callbackUrl；失败时通常重定向回登录页并附带错误参数。',
+            },
+          },
+        },
+      },
       '/api/v1/desktop/version': {
         get: {
           tags: ['Desktop'],
@@ -669,6 +772,100 @@ export function buildOpenApiDocument(origin?: string) {
             expires_in: { type: 'integer', example: 3600 },
           },
           required: ['access_token', 'refresh_token', 'token_type', 'expires_in'],
+        },
+        CsrfTokenResponse: {
+          type: 'object',
+          properties: {
+            csrfToken: { type: 'string', description: '用于提交 NextAuth 表单回调的 CSRF Token。' },
+          },
+          required: ['csrfToken'],
+        },
+        LoginPhoneCodeSendRequest: {
+          type: 'object',
+          properties: {
+            phone: {
+              type: 'string',
+              description: '中国大陆手机号。',
+              example: '13812345678',
+            },
+          },
+          required: ['phone'],
+        },
+        PhoneVerificationCodeSendData: {
+          type: 'object',
+          properties: {
+            sent: { type: 'boolean', example: true },
+            expiresInSeconds: { type: 'integer', minimum: 1, example: 300 },
+            resendInSeconds: { type: 'integer', minimum: 1, example: 60 },
+          },
+          required: ['sent', 'expiresInSeconds', 'resendInSeconds'],
+        },
+        PhoneVerificationCodeSendResponse: {
+          type: 'object',
+          properties: {
+            data: { $ref: '#/components/schemas/PhoneVerificationCodeSendData' },
+            message: {
+              type: 'string',
+              example: '验证码已发送，请在 5 分钟内完成登录。',
+            },
+          },
+          required: ['data', 'message'],
+        },
+        PhoneVerificationCodeErrorResponse: {
+          type: 'object',
+          properties: {
+            error: { type: 'string', example: '发送过于频繁，请 48 秒后再试。' },
+            code: { type: 'string', example: 'PHONE_VERIFICATION_CODE_RESEND_COOLDOWN' },
+            data: {
+              anyOf: [
+                {
+                  type: 'object',
+                  properties: {
+                    cooldownRemaining: { type: 'integer', minimum: 0, example: 48 },
+                  },
+                  additionalProperties: true,
+                },
+                { type: 'null' },
+              ],
+            },
+          },
+          required: ['error', 'code'],
+        },
+        ConsumerPhoneCodeSignInRequest: {
+          type: 'object',
+          properties: {
+            phone: {
+              type: 'string',
+              description: '中国大陆手机号。',
+              example: '13812345678',
+            },
+            smsCode: {
+              type: 'string',
+              description: '6 位短信验证码。',
+              example: '123456',
+            },
+            csrfToken: {
+              type: 'string',
+              description: '先调用 `/api/auth/csrf` 获取，并与响应 Cookie 配套使用。',
+            },
+            callbackUrl: {
+              type: 'string',
+              description: '登录成功后的跳转地址，未传时使用当前页面。',
+              example: '/profile',
+            },
+          },
+          required: ['phone', 'smsCode', 'csrfToken'],
+        },
+        NextAuthRedirectResponse: {
+          type: 'object',
+          properties: {
+            url: {
+              type: 'string',
+              description: '下一跳 URL。成功时通常是 callbackUrl；失败时通常附带 `error`、`code` 等查询参数。',
+              example: 'http://localhost:3000/profile',
+            },
+          },
+          required: ['url'],
         },
         DesktopVersionChangeLogSection: {
           type: 'object',
