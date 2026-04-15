@@ -22,15 +22,12 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="admin-app-shell">
-      <div className="admin-shell-grid pointer-events-none absolute inset-0" />
-      <div className="relative flex min-h-screen flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
-        <Sidebar user={session.user} />
-        <div className="admin-main-shell">
-          <Header user={session.user} />
-          <main className="admin-main-surface">
-            <div className="admin-page">{children}</div>
-          </main>
+    <div className="relative flex min-h-screen bg-background">
+      <Sidebar user={session.user} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header user={session.user} />
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            {children}
         </div>
       </div>
     </div>

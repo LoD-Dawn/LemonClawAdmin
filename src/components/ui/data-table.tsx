@@ -25,16 +25,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Pagination,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
+  Pagination,
 } from '@/components/ui/pagination'
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Settings2, Search, Rows3 } from 'lucide-react'
+import { Settings2, Search } from 'lucide-react'
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -143,102 +143,97 @@ export function DataTable<TData, TValue>({
   }
 
   return (
-    <div className="admin-table-shell">
-      <div className="admin-table-toolbar">
-        <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
-          {searchKey ? (
-            <div className="relative w-full max-w-xl">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-1 items-center space-x-2 min-w-[200px]">
+          {searchKey && (
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
                 value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
                 onChange={(event) => table.getColumn(searchKey)?.setFilterValue(event.target.value)}
-                className="pl-11"
+                className="pl-9"
               />
             </div>
-          ) : null}
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
-              <Rows3 className="h-4 w-4 text-slate-400" />
-              当前 {table.getRowModel().rows.length} 条
-            </span>
-            <span className="hidden text-slate-300 lg:inline">/</span>
-            <span className="hidden lg:inline">总计 {totalCount} 条记录</span>
-          </div>
+          )}
         </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="self-start lg:self-auto">
-              <Settings2 className="mr-2 h-4 w-4" />
-              显示列
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="ml-auto">
+                <Settings2 className="mr-2 h-4 w-4" />
+                显示列
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  >
+                    {column.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} className="font-semibold first:pl-6 last:pr-6">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="first:pl-6 last:pr-6">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="px-6 py-12">
-                <EmptyState
-                  title="暂无数据"
-                  description="没有找到任何记录，请尝试调整搜索条件"
-                />
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <EmptyState
+                    title="暂无数据"
+                    description="没有找到任何记录"
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-      <div className="flex flex-col gap-4 border-t border-slate-200/70 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="text-sm text-slate-500">
-          第 <span className="font-semibold text-slate-800">{page}</span> / {Math.max(pageCount, 1)} 页，共 {totalCount} 条记录
+      <div className="flex items-center justify-between px-2">
+        <div className="flex-1 text-sm text-muted-foreground">
+          共 {totalCount} 条记录
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">每页显示</span>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">每页显示</p>
             <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
-              <SelectTrigger className="h-9 w-[84px]">
+              <SelectTrigger className="h-8 w-[70px]">
                 <SelectValue placeholder={pageSize} />
               </SelectTrigger>
               <SelectContent side="top">
@@ -250,26 +245,29 @@ export function DataTable<TData, TValue>({
               </SelectContent>
             </Select>
           </div>
-
-          <Pagination className="mx-0 w-auto justify-start">
-            <PaginationContent>
-              <PaginationPrevious
-                onClick={(e) => {
-                  e.preventDefault()
-                  if (page > 1) onPageChange(page - 1)
-                }}
-                className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
-              />
-              {renderPageNumbers()}
-              <PaginationNext
-                onClick={(e) => {
-                  e.preventDefault()
-                  if (page < pageCount) onPageChange(page + 1)
-                }}
-                className={page >= pageCount ? 'pointer-events-none opacity-50' : ''}
-              />
-            </PaginationContent>
-          </Pagination>
+          <div className="flex items-center space-x-2">
+            <Pagination className="mx-0 w-auto">
+              <PaginationContent>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (page > 1) onPageChange(page - 1)
+                  }}
+                  className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                />
+                {renderPageNumbers()}
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (page < pageCount) onPageChange(page + 1)
+                  }}
+                  className={page >= pageCount ? 'pointer-events-none opacity-50' : ''}
+                />
+              </PaginationContent>
+            </Pagination>
+          </div>
         </div>
       </div>
     </div>

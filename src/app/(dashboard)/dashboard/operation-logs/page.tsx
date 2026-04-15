@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import type { Prisma } from '@prisma/client'
-import { History, ShieldCheck, Users, FileClock } from 'lucide-react'
+import { History, FileClock, Users, ShieldCheck } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { parseOperationLogMetadata } from '@/lib/operation-log'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
 import { AdminStatCard } from '@/components/layout/admin-stat-card'
 import { OperationLogsClient } from './OperationLogsClient'
+import { Main } from '@/components/layout/main'
 
 function buildWhere({
   search,
@@ -43,11 +44,9 @@ export default async function OperationLogsPage({
   searchParams?: Promise<{ page?: string; pageSize?: string; search?: string; module?: string; targetType?: string }>
 }) {
   const session = await auth()
-
   if (!session?.user) {
     redirect('/login')
   }
-
   if (!session.user.isSuperAdmin) {
     redirect('/dashboard')
   }
@@ -91,17 +90,16 @@ export default async function OperationLogsPage({
   ])
 
   return (
-    <div className="space-y-6">
+    <Main className="space-y-4">
       <AdminPageHeader
-        eyebrow="审计"
         title="操作日志"
-        description="集中查看各账号在后台和申请流程中的关键操作记录，便于追踪责任、排查问题与复盘变更。"
+        description="集中查看全局关键操作记录，用于复盘与审计。"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminStatCard label="日志总量" value={total} icon={History} hint="当前筛选条件下的记录数" />
-        <AdminStatCard label="24 小时新增" value={todayCount} icon={FileClock} tone="sky" hint="最近一天产生的操作" />
-        <AdminStatCard label="近 7 天活跃账号" value={recentActors.length} icon={Users} tone="emerald" hint="产生过操作日志的账号" />
-        <AdminStatCard label="覆盖模块" value={moduleCount.length} icon={ShieldCheck} tone="amber" hint="已接入日志记录的功能域" />
+        <AdminStatCard label="日志总量" value={total} icon={History} hint="总记录条数" />
+        <AdminStatCard label="24h 新增" value={todayCount} icon={FileClock} hint="最近一天产生" />
+        <AdminStatCard label="7d 活跃账号" value={recentActors.length} icon={Users} hint="执行过操作的账号" />
+        <AdminStatCard label="涉及模块" value={moduleCount.length} icon={ShieldCheck} hint="管理域覆盖数" />
       </div>
       <OperationLogsClient
         initialLogs={logs.map((log) => ({
@@ -120,6 +118,6 @@ export default async function OperationLogsPage({
           targetType,
         }}
       />
-    </div>
+    </Main>
   )
 }

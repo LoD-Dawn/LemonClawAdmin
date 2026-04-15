@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
-import { LayoutDashboard, Users, Building2, Box, Bot, Cpu, LogOut, CheckSquare, ShieldCheck, Tags, History, AppWindow, Download, ChevronRight, PlugZap } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, Box, Bot, Cpu, LogOut, CheckSquare, ShieldCheck, Tags, History, AppWindow, Download, ChevronRight, PlugZap, ChevronsUpDown, Ellipsis } from 'lucide-react'
 
 interface NavItem {
   href: string
@@ -163,162 +163,144 @@ export function Sidebar({ user }: SidebarProps) {
         : '企业成员空间'
 
   return (
-    <aside className="admin-sidebar-shell">
-      <div className="flex h-full min-h-0 flex-col gap-5 p-4 sm:p-5">
-        <div className="admin-surface relative overflow-hidden rounded-[28px] px-4 py-5 sm:px-5">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-sky-200/30 via-sky-100/10 to-transparent" />
-          <div className="relative space-y-3">
-            <div className="flex items-start gap-3 sm:items-center">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-[0_18px_32px_-20px_rgba(15,23,42,0.8)]">
-                <Cpu className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-sm font-semibold leading-tight tracking-tight text-slate-900 sm:text-base">LemonClaw</h1>
-                <p className="mt-1 break-words text-xs leading-relaxed text-slate-500">
-                  更统一、更清晰的管理空间
-                </p>
-              </div>
-            </div>
-            <div className="inline-flex w-fit rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
-              {roleLabel}
-            </div>
-          </div>
+    <aside className="sticky top-0 flex h-screen w-[--sidebar-width] shrink-0 flex-col border-r border-sidebar-border bg-sidebar [--sidebar-width:16rem]">
+      {/* ── App brand header ── */}
+      <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-4">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <Cpu className="h-4 w-4" />
         </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm font-semibold text-sidebar-foreground">LemonClaw</span>
+          <span className="truncate text-[11px] text-muted-foreground">{roleLabel}</span>
+        </div>
+      </div>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto px-1 pr-2">
-            <div className="space-y-3">
-              <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">导航</p>
+      {/* ── Navigation ── */}
+      <div className="flex-1 overflow-y-auto py-2">
+        <nav className="space-y-1 px-2">
+          {navSections.map(section => {
+            const isOverview = section.id === 'overview'
+            const isOpen = openSectionId === section.id
+            const hasActiveChild = section.items.some(item => item.href === pathname)
 
-              {navSections.map(section => {
-                const isOverview = section.id === 'overview'
-                const isOpen = openSectionId === section.id
-                const hasActiveChild = section.items.some(item => item.href === pathname)
-
-                if (isOverview) {
-                  return (
-                    <section key={section.id} className="space-y-2">
-                      <nav className="flex flex-wrap gap-2 lg:flex-col">
-                        {section.items.map(item => {
-                          const Icon = item.icon
-                          const isActive = pathname === item.href
-                          return (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              className={cn(
-                                'admin-nav-item min-w-[calc(50%-0.25rem)] lg:min-w-0',
-                                isActive && 'admin-nav-item-active'
-                              )}
-                            >
-                              <Icon className="h-4 w-4 shrink-0" />
-                              {item.label}
-                            </Link>
-                          )
-                        })}
-                      </nav>
-                    </section>
-                  )
-                }
-
-                return (
-                  <section key={section.id} className="admin-nav-group">
-                    <button
-                      type="button"
-                      onClick={() => toggleSection(section.id)}
-                      className={cn(
-                        'admin-nav-group-trigger',
-                        hasActiveChild && 'admin-nav-group-trigger-active'
-                      )}
-                      aria-expanded={isOpen}
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <span className="truncate text-sm font-semibold">{section.title}</span>
-                        <span className="rounded-full bg-white/75 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                          {section.items.length}
-                        </span>
-                      </span>
-                      <ChevronRight
+            if (isOverview) {
+              return (
+                <div key={section.id}>
+                  {section.items.map(item => {
+                    const Icon = item.icon
+                    const isActive = pathname === item.href
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
                         className={cn(
-                          'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200',
-                          isOpen && 'rotate-90 text-slate-700'
+                          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                          isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                         )}
-                      />
-                    </button>
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )
+            }
 
-                    {isOpen ? (
-                      <nav className="mt-2 flex flex-wrap gap-2 pl-2 lg:flex-col">
-                        {section.items.map(item => {
-                          const Icon = item.icon
-                          const isActive = pathname === item.href
-                          return (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              className={cn(
-                                'admin-nav-item min-w-[calc(50%-0.25rem)] lg:min-w-0',
-                                isActive && 'admin-nav-item-active'
-                              )}
-                            >
-                              <Icon className="h-4 w-4 shrink-0" />
-                              {item.label}
-                            </Link>
-                          )
-                        })}
-                      </nav>
-                    ) : null}
-                  </section>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <Separator className="mb-4 bg-slate-200/80" />
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            return (
+              <div key={section.id} className="pt-2">
                 <button
                   type="button"
-                  className="admin-surface flex w-full items-center gap-3 rounded-[24px] px-4 py-4 text-left transition hover:-translate-y-0.5"
+                  onClick={() => toggleSection(section.id)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider transition-colors',
+                    hasActiveChild
+                      ? 'text-sidebar-foreground'
+                      : 'text-muted-foreground hover:text-sidebar-foreground'
+                  )}
+                  aria-expanded={isOpen}
                 >
-                  <div className="relative">
-                    <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
-                      <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
-                      <AvatarFallback className="bg-slate-900 text-xs text-white">
-                        {getInitials(user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium text-slate-900">{user.name || '未命名用户'}</div>
-                    <div className="truncate text-xs text-slate-500">{user.email}</div>
-                  </div>
+                  <span>{section.title}</span>
+                  <ChevronRight
+                    className={cn(
+                      'h-3 w-3 shrink-0 transition-transform duration-200',
+                      isOpen && 'rotate-90'
+                    )}
+                  />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 border-slate-200 bg-white/95 backdrop-blur-xl">
-                <DropdownMenuLabel className="bg-slate-50/70">
-                  <div className="flex flex-col">
-                    <span className="text-slate-800">{user.name}</span>
-                    <span className="text-xs font-normal text-slate-500">{user.email}</span>
+
+                {isOpen && (
+                  <div className="mt-1 space-y-0.5">
+                    {section.items.map(item => {
+                      const Icon = item.icon
+                      const isActive = pathname === item.href
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                            isActive
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {item.label}
+                        </Link>
+                      )
+                    })}
                   </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-200" />
-                <DropdownMenuItem
-                  className="cursor-pointer text-rose-600 focus:bg-rose-50 focus:text-rose-700"
-                  onClick={async () => {
-                    await signOut({ redirect: false })
-                    window.location.href = '/login'
-                  }}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  退出登录
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+                )}
+              </div>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* ── User footer ── */}
+      <div className="border-t border-sidebar-border p-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-sidebar-accent"
+            >
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
+                <AvatarFallback className="bg-primary text-xs text-primary-foreground">
+                  {getInitials(user.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-sidebar-foreground">{user.name || '未命名用户'}</div>
+                <div className="truncate text-xs text-muted-foreground">{user.email}</div>
+              </div>
+              <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col">
+                <span>{user.name}</span>
+                <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+              onClick={async () => {
+                await signOut({ redirect: false })
+                window.location.href = '/login'
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              退出登录
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   )

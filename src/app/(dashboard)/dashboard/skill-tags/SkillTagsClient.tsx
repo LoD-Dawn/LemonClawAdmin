@@ -32,8 +32,11 @@ export function SkillTagsClient({ initialTags }: { initialTags: SkillTagRow[] })
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-96 w-full" />
+        <div className="flex justify-between">
+           <Skeleton className="h-8 w-24" />
+           <Skeleton className="h-8 w-32" />
+        </div>
+        <Skeleton className="h-[400px] w-full" />
       </div>
     )
   }

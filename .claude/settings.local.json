@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Read(//c/Users/Administrator/Desktop/project/lemonClaw/参考项目/**)"
+    ]
+  }
+}

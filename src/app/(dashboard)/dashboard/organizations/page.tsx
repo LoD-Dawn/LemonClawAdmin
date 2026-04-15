@@ -5,6 +5,7 @@ import { OrganizationTree } from '@/components/organizations/organization-tree'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
 import { AdminStatCard } from '@/components/layout/admin-stat-card'
 import { Building2, Users, GitBranch } from 'lucide-react'
+import { Main } from '@/components/layout/main'
 
 export default async function OrganizationsPage() {
   const session = await auth()
@@ -25,18 +26,17 @@ export default async function OrganizationsPage() {
   const deepestLevel = organizations.reduce((max, organization) => Math.max(max, organization.level), 0) + 1
 
   return (
-    <div className="space-y-6">
+    <Main className="space-y-4">
       <AdminPageHeader
-        eyebrow="组织"
         title="组织架构"
-        description="从公司到部门再到小组，统一维护组织树，方便用户归属、审核范围和资源权限同步对齐。"
+        description="维护公司、部门与小组层级，管理用户归属与资源权限范围。"
       />
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminStatCard label="组织节点" value={organizations.length} icon={Building2} hint="当前组织总数" />
-        <AdminStatCard label="层级深度" value={deepestLevel} icon={GitBranch} tone="sky" hint="最长组织层级" />
-        <AdminStatCard label="关联用户" value={totalUsers} icon={Users} tone="emerald" hint="节点用户累计数" />
+        <AdminStatCard label="组织节点" value={organizations.length} icon={Building2} hint="当前总节点数" />
+        <AdminStatCard label="层级深度" value={deepestLevel} icon={GitBranch} hint="最深组织层级" />
+        <AdminStatCard label="关联用户" value={totalUsers} icon={Users} hint="全组织成员总数" />
       </div>
       <OrganizationTree organizations={organizations} />
-    </div>
+    </Main>
   )
 }

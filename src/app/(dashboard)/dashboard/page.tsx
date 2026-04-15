@@ -1,11 +1,13 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Users, Building2, Box, Bot, Cpu, ArrowRight, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { getManagementMode } from '@/lib/admin-access'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
 import { AdminStatCard } from '@/components/layout/admin-stat-card'
+import { Button } from '@/components/ui/button'
+import { Main } from '@/components/layout/main'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -40,101 +42,104 @@ export default async function DashboardPage() {
       ]
 
   const stats = [
-    { title: '活跃用户', value: userCount, icon: Users, tone: 'default' as const, hint: '已启用账号' },
-    { title: '组织节点', value: orgCount, icon: Building2, tone: 'sky' as const, hint: '公司与部门结构' },
-    { title: 'Skill 资产', value: skillCount, icon: Box, tone: 'emerald' as const, hint: '可用技能总数' },
-    { title: '模型配置', value: modelProviderCount, icon: Bot, tone: 'sky' as const, hint: '可用提供商总数' },
-    { title: 'MCP 资产', value: mcpCount, icon: Cpu, tone: 'amber' as const, hint: '可用服务连接' },
+    { title: '活跃用户', value: userCount, icon: Users, hint: '已启用账号' },
+    { title: '组织节点', value: orgCount, icon: Building2, hint: '公司与部门结构' },
+    { title: 'Skill 资产', value: skillCount, icon: Box, hint: '可用技能总数' },
+    { title: '模型配置', value: modelProviderCount, icon: Bot, hint: '可用提供商总数' },
+    { title: 'MCP 资产', value: mcpCount, icon: Cpu, hint: '可用服务连接' },
   ]
 
   const roleDescription = managementMode === 'super_admin'
-    ? '总览整个平台的用户、组织、技能与 MCP 资源，适合快速发现整体变化。'
+    ? '查看平台资源分布与状态汇总。'
     : managementMode === 'department_admin'
-    ? '聚焦本部门的技能、MCP 与授权流转，方便快速处理日常管理动作。'
-    : '这里会集中展示你当前可管理或可访问的 Skill 与 MCP 资源。'
+    ? '聚焦本部门的技能、MCP 与授权流转。'
+    : '你当前可管理或可访问的 Skill 与 MCP 资源汇总。'
 
   return (
-    <div className="space-y-6">
+    <Main className="space-y-4">
       <AdminPageHeader
-        eyebrow="总览"
-        title="欢迎回到管理工作台"
+        title="Dashboard"
         description={roleDescription}
-        meta={
-          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            系统运行正常
-          </span>
-        }
+        actions={<Button size="sm">Download Reports</Button>}
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {stats.map((stat) => (
           <AdminStatCard
             key={stat.title}
             label={stat.title}
             value={stat.value}
             icon={stat.icon}
-            tone={stat.tone}
             hint={stat.hint}
           />
         ))}
       </div>
 
-      <Card className="admin-surface overflow-hidden">
-        <CardContent className="grid gap-6 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-7">
-          <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-1 lg:col-span-4">
+          <CardHeader>
+            <CardTitle>快速操作</CardTitle>
+            <CardDescription>
+              常用管理入口，助你快速进入对应的资源管理页面。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            {quickActions.map((action) => {
+              const Icon = action.icon
+              return (
+                <Link
+                  key={action.label}
+                  href={action.href}
+                  className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent"
+                >
+                  <div className="mt-1">
+                    <Icon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium leading-none">{action.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {action.description}
+                    </p>
+                  </div>
+                </Link>
+              )
+            })}
+          </CardContent>
+        </Card>
+        
+        <Card className="col-span-1 lg:col-span-3">
+          <CardHeader>
+            <CardTitle>系统建议</CardTitle>
+            <CardDescription>
+              当前会话管理模式与后续操作建议。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border p-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">当前管理模式</span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                你正在以 <span className="font-semibold text-foreground">
+                  {managementMode === 'super_admin' ? '超级管理员' : managementMode === 'department_admin' ? '部门管理员' : '个人用户'}
+                </span> 模式进行操作。
+              </p>
+            </div>
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">快速操作</div>
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-900">常用管理入口</h2>
-              <p className="max-w-2xl text-sm leading-6 text-slate-600">
-                保留清晰的信息密度，不做过度装饰，但让常见操作更容易扫到、更容易进入。
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                建议定期检查待审核申请与资产更新日志，以确保组织内的资源流通符合治理规范。后台样式已全面对齐专业管理台风格。
               </p>
+              <Button asChild variant="outline" className="w-full justify-start h-8 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors group">
+                <Link href="/dashboard/operation-logs">
+                  查看操作审计
+                  <ArrowRight className="ml-2 h-3 w-3 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </Button>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {quickActions.map((action) => {
-                const Icon = action.icon
-                return (
-                  <Link
-                    key={action.label}
-                    href={action.href}
-                    className="group admin-surface-muted flex items-start gap-4 p-5 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white"
-                  >
-                    <div className="rounded-2xl bg-slate-900 p-3 text-white shadow-[0_18px_30px_-20px_rgba(15,23,42,0.82)]">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-slate-900">{action.label}</h3>
-                        <ArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-500" />
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-500">{action.description}</p>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="admin-surface-muted flex flex-col justify-between p-5">
-            <div className="space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">管理建议</div>
-              <h3 className="text-xl font-semibold tracking-tight text-slate-900">把高频管理动作收敛到同一视觉层级</h3>
-              <p className="text-sm leading-6 text-slate-600">
-                这次改造重点放在侧栏、头部、页面标题、表格与统计卡片的一致性，让后台页面更整洁、更稳定，也更容易继续扩展。
-              </p>
-            </div>
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-4 py-3 text-sm text-slate-500">
-              当前管理模式：
-              <span className="ml-2 font-semibold text-slate-800">
-                {managementMode === 'super_admin'
-                  ? '超级管理员'
-                  : managementMode === 'department_admin'
-                  ? '部门管理员'
-                  : '个人用户'}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Main>
   )
 }

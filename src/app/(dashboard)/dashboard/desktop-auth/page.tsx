@@ -5,6 +5,7 @@ import { getDesktopOAuthClientConfig } from '@/lib/oauth-clients'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
 import { AdminStatCard } from '@/components/layout/admin-stat-card'
 import { DesktopAuthConfigClient } from './DesktopAuthConfigClient'
+import { Main } from '@/components/layout/main'
 
 export default async function DesktopAuthPage() {
   const session = await auth()
@@ -19,32 +20,29 @@ export default async function DesktopAuthPage() {
   const client = await getDesktopOAuthClientConfig()
 
   return (
-    <div className="space-y-6">
+    <Main className="space-y-4">
       <AdminPageHeader
-        eyebrow="Desktop"
         title="桌面端登录"
-        description="集中维护桌面客户端使用的登录授权配置，包括允许回调地址、客户端状态和密钥轮换。"
+        description="管理桌面客户端的 OAuth 授权配置与安全策略。"
       />
       <div className="grid gap-4 md:grid-cols-3">
         <AdminStatCard
           label="客户端标识"
           value={client.clientId}
           icon={AppWindow}
-          hint="桌面端固定使用的 OAuth Client"
+          hint="固定 OAuth 标识符"
         />
         <AdminStatCard
           label="允许回调"
           value={client.allowedRedirectUris.length}
           icon={Link2}
-          tone="sky"
-          hint="每个地址都需要与桌面端传参完全一致"
+          hint="登记的回调地址总数"
         />
         <AdminStatCard
           label="状态"
           value={client.isActive ? '已启用' : '已停用'}
           icon={KeyRound}
-          tone={client.isActive ? 'emerald' : 'amber'}
-          hint="停用后桌面端将无法继续完成授权"
+          hint="当前登录服务状态"
         />
       </div>
       <DesktopAuthConfigClient
@@ -54,6 +52,6 @@ export default async function DesktopAuthPage() {
           updatedAt: client.updatedAt.toISOString(),
         }}
       />
-    </div>
+    </Main>
   )
 }

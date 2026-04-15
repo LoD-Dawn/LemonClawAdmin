@@ -13,6 +13,7 @@ import { sanitizeManagementModelProviders } from '@/lib/model-provider-presenter
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
 import { AdminStatCard } from '@/components/layout/admin-stat-card'
 import { Bot, CheckCircle2, Eye } from 'lucide-react'
+import { Main } from '@/components/layout/main'
 
 export default async function ModelsPage() {
   const session = await auth()
@@ -56,7 +57,7 @@ export default async function ModelsPage() {
   const typedProviders = sanitizeManagementModelProviders(providers.map((provider) => ({
     ...provider,
     visibility: provider.visibility as Visibility,
-    canManage: canManageResource(session.user, provider, {
+    canManage: canManageResource(session.user!, provider, {
       scopedOrganizationIds: accessScope.scopedOrganizationIds,
     }),
   })))
@@ -64,13 +65,13 @@ export default async function ModelsPage() {
   const pageTitle = managementMode === 'super_admin'
     ? '模型管理'
     : managementMode === 'department_admin'
-    ? '部门模型管理'
-    : '我的模型配置'
+    ? '部门模型'
+    : '我的模型'
   const pageDescription = managementMode === 'super_admin'
-    ? '统一维护模型提供商、默认模型和客户端分发配置，避免多个客户端各自保存一份模型清单。'
+    ? '统一维护模型提供商、默认模型和客户端分层。'
     : managementMode === 'department_admin'
-    ? '聚焦部门范围内的模型配置，确保团队使用的提供商和默认模型保持一致。'
-    : '维护你自己的模型配置，便于在客户端里快速切换个人专用的模型提供商。'
+    ? '维护部门范围内的模型配置与提供商。'
+    : '维护你自己的个人模型提供商配置。'
   const ownershipLabel = managementMode === 'super_admin'
     ? '全局配置池'
     : managementMode === 'department_admin'
@@ -78,16 +79,15 @@ export default async function ModelsPage() {
     : '个人可见'
 
   return (
-    <div className="space-y-6">
+    <Main className="space-y-4">
       <AdminPageHeader
-        eyebrow="Model"
         title={pageTitle}
         description={pageDescription}
       />
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminStatCard label="当前总量" value={total} icon={Bot} hint="已启用提供商数量" />
-        <AdminStatCard label="启用中" value={enabledCount} icon={CheckCircle2} tone="sky" hint="客户端当前可选" />
-        <AdminStatCard label="管理视角" value={ownershipLabel} icon={Eye} tone="emerald" hint="依据角色动态调整" />
+        <AdminStatCard label="提供商总量" value={total} icon={Bot} hint="已启用配置" />
+        <AdminStatCard label="可用模型" value={enabledCount} icon={CheckCircle2} hint="客户端当前可选" />
+        <AdminStatCard label="管理视角" value={ownershipLabel} icon={Eye} hint="依据角色调整" />
       </div>
       <ModelsClient
         initialProviders={typedProviders}
@@ -101,6 +101,6 @@ export default async function ModelsPage() {
           total,
         }}
       />
-    </div>
+    </Main>
   )
 }

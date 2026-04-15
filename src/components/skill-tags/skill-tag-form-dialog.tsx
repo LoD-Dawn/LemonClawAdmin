@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { Switch } from '@/components/ui/switch'
 
 const tagIdPattern = /^[a-z0-9][a-z0-9-]{0,63}$/
 
@@ -99,15 +100,15 @@ export function SkillTagFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? '编辑标签' : '新建标签'}</DialogTitle>
           <DialogDescription>
-            标签 ID 会写入 Skill 的标签数组里，创建后建议保持稳定；中英文名称可以后续继续调整。
+            编辑标签的基础信息与多语言映射。
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 py-2">
             <FormField
               control={form.control}
               name="id"
@@ -117,7 +118,7 @@ export function SkillTagFormDialog({
                   <FormControl>
                     <Input {...field} placeholder="productivity" disabled={isEditing} />
                   </FormControl>
-                  <FormDescription>用于 Skill 标签值存储，推荐和客户端枚举保持一致。</FormDescription>
+                  <FormDescription>用于存储的唯一主键。</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -152,13 +153,13 @@ export function SkillTagFormDialog({
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
+            <div className="grid gap-4 sm:grid-cols-2 items-center">
               <FormField
                 control={form.control}
                 name="sortOrder"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>排序</FormLabel>
+                    <FormLabel>排序权重</FormLabel>
                     <FormControl>
                       <Input {...field} type="number" min={0} max={9999} />
                     </FormControl>
@@ -170,42 +171,30 @@ export function SkillTagFormDialog({
                 control={form.control}
                 name="isActive"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>状态</FormLabel>
-                    <div className="flex gap-3">
-                      <Button
-                        type="button"
-                        variant={field.value ? 'default' : 'outline'}
-                        className="flex-1"
-                        onClick={() => field.onChange(true)}
-                      >
-                        启用
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={!field.value ? 'default' : 'outline'}
-                        className="flex-1"
-                        onClick={() => field.onChange(false)}
-                      >
-                        停用
-                      </Button>
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3.5 space-y-0 mt-6">
+                    <div className="space-y-0.5">
+                      <FormLabel>启用状态</FormLabel>
                     </div>
-                    <FormDescription>停用后不会再出现在新建 Skill 的标签选项里。</FormDescription>
-                    <FormMessage />
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
             </div>
 
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 取消
               </Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isEditing ? '保存' : '创建'}
+                {isEditing ? '保存修改' : '创建标签'}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </Form>
       </DialogContent>

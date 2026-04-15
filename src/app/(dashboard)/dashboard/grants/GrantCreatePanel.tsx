@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -64,21 +64,21 @@ export function GrantCreatePanel({
   const isDisabled = filteredResources.length === 0 || users.length === 0 || !resourceId || !userId
 
   return (
-    <Card className="border-gray-200 bg-gradient-to-br from-white to-gray-50">
-      <CardHeader className="pb-3">
+    <Card>
+      <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gray-900 p-2 text-white">
+          <div className="rounded-lg bg-primary p-2 text-primary-foreground">
             <ShieldPlus className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">手工授权</h2>
-            <p className="text-sm text-gray-500">直接为用户授予部门级 Skill 或 MCP，无需先走申请单。</p>
+            <CardTitle className="text-lg">手工授权</CardTitle>
+            <CardDescription>直接为指定用户授予资源访问权限，无需经过审批流程。</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-3">
+      <CardContent className="grid gap-6 md:grid-cols-3">
         <div className="space-y-2">
-          <Label>资源类型</Label>
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">资源类型</Label>
           <Select value={resourceType} onValueChange={(value: 'skill' | 'mcp') => setResourceType(value)}>
             <SelectTrigger>
               <SelectValue placeholder="选择资源类型" />
@@ -91,7 +91,7 @@ export function GrantCreatePanel({
         </div>
 
         <div className="space-y-2">
-          <Label>资源</Label>
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">目标资源</Label>
           <Select value={resourceId} onValueChange={setResourceId} disabled={filteredResources.length === 0}>
             <SelectTrigger>
               <SelectValue placeholder={filteredResources.length === 0 ? '暂无可授权资源' : '选择资源'} />
@@ -107,7 +107,7 @@ export function GrantCreatePanel({
         </div>
 
         <div className="space-y-2">
-          <Label>授权给</Label>
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">被授权用户</Label>
           <Select value={userId} onValueChange={setUserId} disabled={users.length === 0}>
             <SelectTrigger>
               <SelectValue placeholder={users.length === 0 ? '暂无可授权用户' : '选择用户'} />
@@ -115,16 +115,19 @@ export function GrantCreatePanel({
             <SelectContent>
               {users.map((user) => (
                 <SelectItem key={user.id} value={user.id}>
-                  {user.name || user.email}
-                  {user.organizationName ? ` (${user.organizationName})` : ''}
+                  <div className="flex flex-col">
+                    <span>{user.name || user.email}</span>
+                    <span className="text-[10px] text-muted-foreground">{user.email}</span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="flex justify-end md:col-span-3">
+        <div className="flex justify-end md:col-span-3 pt-2">
           <Button
+            className="w-full md:w-auto"
             disabled={isDisabled || isSubmitting}
             onClick={async () => {
               setIsSubmitting(true)
@@ -144,7 +147,7 @@ export function GrantCreatePanel({
                 if (!response.ok) {
                   toast({
                     title: '授权失败',
-                    description: result.error || '请稍后重试',
+                    description: result.error || '无法完成授权操作',
                     variant: 'destructive',
                   })
                   return
@@ -152,13 +155,13 @@ export function GrantCreatePanel({
 
                 toast({
                   title: '授权已生效',
-                  description: '该用户现在可以使用对应资源了。',
+                  description: '该用户现在已获得对应资源的访问权限。',
                 })
                 router.refresh()
               } catch {
                 toast({
-                  title: '授权失败',
-                  description: '请求未成功提交，请稍后重试。',
+                  title: '网络错误',
+                  description: '授权请求提交失败，请重试。',
                   variant: 'destructive',
                 })
               } finally {
@@ -166,7 +169,7 @@ export function GrantCreatePanel({
               }
             }}
           >
-            {isSubmitting ? '授权中...' : '确认授权'}
+            {isSubmitting ? '正在提交...' : '确认发布授权'}
           </Button>
         </div>
       </CardContent>

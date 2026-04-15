@@ -13,24 +13,20 @@ interface AdminPageHeaderProps {
 export function AdminPageHeader({
   title,
   description,
-  eyebrow = '管理端',
   actions,
   meta,
   className,
 }: AdminPageHeaderProps) {
   return (
-    <section className={cn('admin-page-header', className)}>
-      <div className="space-y-3">
-        <span className="admin-eyebrow">{eyebrow}</span>
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
-            {meta}
-          </div>
-          <p className="max-w-3xl text-sm leading-6 text-slate-600 sm:text-[15px]">{description}</p>
+    <div className={cn('flex flex-wrap items-end justify-between gap-2', className)}>
+      <div>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+          {meta}
         </div>
+        <p className="mt-1 text-muted-foreground">{description}</p>
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-3">{actions}</div> : null}
-    </section>
+    </div>
   )
 }

@@ -36,7 +36,7 @@ export function SkillTagsTable({
         accessorKey: 'id',
         header: '标签 ID',
         cell: ({ row }) => (
-          <code className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700">
+          <code className="rounded border bg-muted/50 px-1.5 py-0.5 text-[11px] font-mono text-muted-foreground">
             {row.original.id}
           </code>
         ),
@@ -123,15 +123,11 @@ export function SkillTagsTable({
   )
 
   return (
-    <div className="space-y-6">
-      <div className="admin-surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">标签字典</div>
-          <p className="text-sm leading-6 text-slate-600">
-            统一维护 Skill 可选标签，多语言名称和启停状态都在这里控制。
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">标签列表</h2>
         <Button
+          size="sm"
           onClick={() => {
             setEditingTag(null)
             setOpen(true)
