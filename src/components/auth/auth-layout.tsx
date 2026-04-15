@@ -24,9 +24,17 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
                   <div className="relative h-24 w-24 overflow-hidden rounded-[2rem] bg-white/10 shadow-[0_30px_60px_-42px_rgba(0,0,0,0.45)]">
                     <Image src="/images/Logo.png" alt="LemonClaw" fill sizes="96px" className="object-cover" />
                   </div>
-                  <span className="text-[5.25rem] font-semibold tracking-[-0.06em] text-white/95 xl:text-[6rem]">
-                    LemonClaw
-                  </span>
+                  <div className="text-left">
+                    <span className="block text-[5.25rem] font-semibold tracking-[-0.06em] text-white/95 xl:text-[6rem]">
+                      LemonClaw
+                    </span>
+                    <div className="ml-1 mt-2 flex items-center gap-3">
+                      <span className="h-px w-8 bg-white/25" />
+                      <span className="text-[0.95rem] font-semibold tracking-[0.18em] text-white/74">
+                        柠檬虾
+                      </span>
+                    </div>
+                  </div>
                 </Link>
               </div>
 
