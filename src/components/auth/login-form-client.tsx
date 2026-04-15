@@ -104,6 +104,8 @@ export function LoginFormClient({
 
   const title = titleOverride || defaultTitle
   const description = descriptionOverride || defaultDescription
+  const showTitleBlock = !minimal
+  const showHeader = showTitleBlock || isAuthFlow || showEntrySwitcher
 
   async function finishAuthFlow() {
     if (isOAuthFlow) {
@@ -276,83 +278,87 @@ export function LoginFormClient({
   }
 
   return (
-    <Card className="login-panel login-panel-glow w-full overflow-hidden rounded-[2rem] border-white/70 bg-white/90">
-      <CardHeader className="space-y-3 p-5 pb-0 sm:p-6 sm:pb-0">
-        {!minimal ? (
-          <div className="flex items-start justify-between gap-4">
-            <div className="inline-flex items-center gap-3 rounded-full border border-orange-100 bg-orange-50/90 px-4 py-2 text-sm text-orange-800">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 text-white shadow-[0_14px_24px_-18px_rgba(249,115,22,0.85)]">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-orange-500">Secure Entry</p>
-                <p className="font-medium text-slate-900">Access Portal</p>
-              </div>
-            </div>
-
-            <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
-              {isAuthFlow ? '授权流程' : '统一登录'}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="space-y-3">
-          <CardTitle className="font-client-serif text-3xl tracking-tight text-slate-950 sm:text-[1.95rem]">
-            {title}
-          </CardTitle>
-          <CardDescription className="max-w-[34rem] text-sm leading-6 text-slate-500">
-            {description}
-          </CardDescription>
-        </div>
-
-        {isAuthFlow ? (
-          <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50/80 p-4">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-amber-700" />
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-amber-700/70">授权目标</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {isDesktopAuthFlow ? '桌面客户端' : oauthClientLabel || oauth.client_id}
-                  </p>
+    <Card className="login-panel login-panel-glow w-full overflow-hidden rounded-[2rem] border border-black/10 bg-white">
+      {showHeader ? (
+        <CardHeader className="space-y-4 p-5 pb-0 sm:p-6 sm:pb-0">
+          {!minimal ? (
+            <div className="flex items-start justify-between gap-4">
+              <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_16px_24px_-18px_rgba(15,23,42,0.8)]">
+                  <ShieldCheck className="h-4 w-4" />
                 </div>
-                {redirectHost ? (
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <Globe className="h-4 w-4 text-slate-400" />
-                    <span className="truncate">{redirectHost}</span>
-                  </div>
-                ) : null}
-                {scopeTokens.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {scopeTokens.map((scope) => (
-                      <span
-                        key={scope}
-                        className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs text-slate-700"
-                      >
-                        {scope}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">Secure Entry</p>
+                  <p className="font-medium text-slate-900">Access Portal</p>
+                </div>
+              </div>
+
+              <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+                {isAuthFlow ? '授权流程' : '统一登录'}
               </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {showEntrySwitcher ? (
-          <div className="rounded-[1.4rem] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
-            当前入口：<span className="font-medium text-slate-900">{entryMode === 'enterprise' ? '企业用户登录' : '普通用户登录'}</span>
-            <Link href={alternateEntryHref} className="ml-2 font-medium text-orange-600 underline-offset-4 hover:underline">
-              切换到{alternateEntryLabel}
-            </Link>
-          </div>
-        ) : null}
-      </CardHeader>
+          {showTitleBlock ? (
+            <div className="space-y-3">
+              <CardTitle className="font-client-serif text-3xl tracking-tight text-slate-950 sm:text-[1.95rem]">
+                {title}
+              </CardTitle>
+              <CardDescription className="max-w-[34rem] text-sm leading-6 text-slate-500">
+                {description}
+              </CardDescription>
+            </div>
+          ) : null}
 
-      <CardContent className="p-5 pt-4 sm:p-6 sm:pt-4">
+          {isAuthFlow ? (
+            <div className="rounded-[1.5rem] border border-red-200/80 bg-red-50/70 p-4">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-red-700" />
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-red-700/70">授权目标</p>
+                    <p className="mt-1 font-medium text-slate-900">
+                      {isDesktopAuthFlow ? '桌面客户端' : oauthClientLabel || oauth.client_id}
+                    </p>
+                  </div>
+                  {redirectHost ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Globe className="h-4 w-4 text-slate-400" />
+                      <span className="truncate">{redirectHost}</span>
+                    </div>
+                  ) : null}
+                  {scopeTokens.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {scopeTokens.map((scope) => (
+                        <span
+                          key={scope}
+                          className="rounded-full border border-red-200 bg-white px-2.5 py-1 text-xs text-slate-700"
+                        >
+                          {scope}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {showEntrySwitcher ? (
+            <div className="rounded-[1.4rem] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+              当前入口：<span className="font-medium text-slate-900">{entryMode === 'enterprise' ? '企业用户登录' : '普通用户登录'}</span>
+              <Link href={alternateEntryHref} className="ml-2 font-medium text-red-700 underline-offset-4 hover:underline">
+                切换到{alternateEntryLabel}
+              </Link>
+            </div>
+          ) : null}
+        </CardHeader>
+      ) : null}
+
+      <CardContent className={cn('p-5 sm:p-6', showHeader ? 'pt-4 sm:pt-4' : 'pt-5 sm:pt-6')}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {entryMode === 'consumer' ? (
-            <div className="space-y-4 rounded-[1.6rem] border border-slate-200/80 bg-slate-50/70 p-4">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-sm font-medium text-slate-700">
                   手机号
@@ -367,7 +373,7 @@ export function LoginFormClient({
                     placeholder="请输入手机号，如 13812345678"
                     value={consumerPhone}
                     onChange={(event) => setConsumerPhone(event.target.value)}
-                    className="h-11 rounded-2xl border-white bg-white pl-11 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-slate-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
                   />
                 </div>
               </div>
@@ -376,7 +382,7 @@ export function LoginFormClient({
                 <Label htmlFor="smsCode" className="text-sm font-medium text-slate-700">
                   短信验证码
                 </Label>
-                <div className="flex gap-3">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_148px]">
                   <Input
                     id="smsCode"
                     name="smsCode"
@@ -386,14 +392,14 @@ export function LoginFormClient({
                     placeholder="请输入 6 位验证码"
                     value={consumerSmsCode}
                     onChange={(event) => setConsumerSmsCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className="h-11 flex-1 rounded-2xl border-white bg-white text-base tracking-[0.25em] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] placeholder:tracking-normal"
+                    className="h-12 rounded-2xl border-black/12 bg-white text-base tracking-[0.25em] shadow-none placeholder:text-slate-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white placeholder:tracking-normal"
                   />
                   <Button
                     type="button"
                     variant="outline"
                     disabled={isSendingSmsCode || smsCooldown > 0}
                     onClick={handleSendVerificationCode}
-                    className="h-11 min-w-[148px] rounded-2xl border-orange-200 bg-white px-4 text-slate-800 hover:border-orange-300 hover:bg-orange-50"
+                    className="h-12 rounded-2xl border-black/12 bg-white px-4 text-slate-900 shadow-none hover:border-red-300 hover:bg-red-50 focus-visible:ring-red-100"
                   >
                     {isSendingSmsCode
                       ? '发送中...'
@@ -403,7 +409,7 @@ export function LoginFormClient({
                   </Button>
                 </div>
                 <p className="text-xs leading-5 text-slate-500">
-                  未注册手机号在验证码校验通过后会自动创建普通用户账号，其他必填资料由系统默认补齐。
+                  未注册手机号在验证码校验通过后会自动创建普通用户账号。
                 </p>
               </div>
             </div>
@@ -421,7 +427,7 @@ export function LoginFormClient({
                     type="email"
                     required
                     placeholder="name@company.com"
-                    className="h-11 rounded-2xl border-slate-200 bg-white pl-11"
+                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-slate-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
                   />
                 </div>
               </div>
@@ -439,7 +445,7 @@ export function LoginFormClient({
                     required
                     minLength={8}
                     placeholder="请输入登录密码"
-                    className="h-11 rounded-2xl border-slate-200 bg-white pl-11"
+                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-slate-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
                   />
                 </div>
               </div>
@@ -461,12 +467,7 @@ export function LoginFormClient({
           <Button
             type="submit"
             disabled={isSubmitting}
-            className={cn(
-              'group h-11 w-full rounded-2xl text-sm shadow-[0_22px_40px_-28px_rgba(15,23,42,0.45)]',
-              entryMode === 'enterprise'
-                ? 'bg-slate-900 text-white hover:bg-slate-800'
-                : 'bg-gradient-to-r from-orange-500 via-orange-400 to-amber-300 text-white hover:from-orange-600 hover:via-orange-500 hover:to-amber-400'
-            )}
+            className="group h-12 w-full rounded-2xl bg-[#171717] text-sm text-white shadow-[0_24px_48px_-30px_rgba(15,23,42,0.65)] hover:bg-black focus-visible:ring-red-100"
           >
             <span>
               {isSubmitting
