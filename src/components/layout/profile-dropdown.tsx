@@ -31,7 +31,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
+        <Button variant='ghost' className='relative h-8 w-8 rounded-full ring-offset-background transition-shadow hover:ring-2 hover:ring-ring hover:ring-offset-2'>
           <Avatar className='h-8 w-8'>
             <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
             <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
@@ -40,8 +40,8 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-56' align='end' forceMount>
         <DropdownMenuLabel className='font-normal'>
-          <div className='flex flex-col gap-1.5'>
-            <p className='text-sm leading-none font-medium'>{user.name}</p>
+          <div className='flex flex-col space-y-1'>
+            <p className='text-sm font-medium leading-none'>{user.name}</p>
             <p className='text-xs leading-none text-muted-foreground'>
               {user.email}
             </p>
@@ -50,11 +50,11 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem disabled>
-            Profile
+            个人资料
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem disabled>
-            Settings
+            设置
             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -66,10 +66,8 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
             window.location.href = '/login'
           }}
         >
-          Sign out
-          <DropdownMenuShortcut className='text-current'>
-            ⇧⌘Q
-          </DropdownMenuShortcut>
+          退出登录
+          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

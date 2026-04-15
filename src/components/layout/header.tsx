@@ -1,30 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Separator } from '@/components/ui/separator'
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
+import { Button } from '@/components/ui/button'
 import { ProfileDropdown } from './profile-dropdown'
-import { Search } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-
-const routeNames: Record<string, string> = {
-  '/dashboard': '概览',
-  '/dashboard/users': '用户管理',
-  '/dashboard/organizations': '组织架构',
-  '/dashboard/skills': 'Skills',
-  '/dashboard/models': '模型管理',
-  '/dashboard/mcps': 'MCPs',
-  '/dashboard/oauth-clients': '第三方接入',
-  '/dashboard/desktop-auth': '桌面端登录',
-  '/dashboard/desktop-version': '桌面端版本',
-  '/dashboard/approvals': '审核管理',
-  '/dashboard/grants': '授权管理',
-  '/dashboard/skill-tags': '标签管理',
-  '/dashboard/operation-logs': '操作日志',
-}
+import { Search } from './search'
+import { ThemeSwitch } from './theme-switch'
+import { SidebarTrigger } from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
 
 interface HeaderProps {
   user: {
@@ -38,7 +22,6 @@ interface HeaderProps {
 }
 
 export function Header({ user }: HeaderProps) {
-  const pathname = usePathname()
   const [offset, setOffset] = useState(0)
 
   useEffect(() => {
@@ -49,48 +32,24 @@ export function Header({ user }: HeaderProps) {
     return () => document.removeEventListener('scroll', onScroll)
   }, [])
 
-  const pathSegments = pathname.split('/').filter(Boolean)
-  const breadcrumbs = pathSegments.map((segment, index) => {
-    const href = '/' + pathSegments.slice(0, index + 1).join('/')
-    const label = routeNames[href] || segment
-    return { href, label, isLast: index === pathSegments.length - 1 }
-  })
-
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 flex h-16 items-center gap-3 border-b bg-background px-4 sm:px-6 lg:px-8 transition-shadow',
-        offset > 10 && 'shadow-sm'
+        'sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-shadow duration-300',
+        offset > 10 && 'shadow-sm border-b border-sidebar-border/50'
       )}
     >
-      <Breadcrumb className="hidden md:flex">
-        {breadcrumbs.map(breadcrumb => (
-          <BreadcrumbItem key={breadcrumb.href}>
-            {breadcrumb.href !== breadcrumbs[0]?.href && (
-              <BreadcrumbSeparator />
-            )}
-            {breadcrumb.isLast ? (
-              <BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
-            ) : (
-              <BreadcrumbLink asChild>
-                <Link href={breadcrumb.href}>
-                  {breadcrumb.label}
-                </Link>
-              </BreadcrumbLink>
-            )}
-          </BreadcrumbItem>
-        ))}
-      </Breadcrumb>
+      <div className='flex items-center gap-3 sm:gap-4'>
+        <SidebarTrigger variant='outline' className='h-8 w-8' />
+        <Separator orientation='vertical' className='h-6 opacity-30' />
+        <Search />
+      </div>
 
-      <div className="ml-auto flex items-center space-x-4">
-        <div className="relative hidden w-64 md:block">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="w-full bg-muted/50 pl-9 focus:bg-background"
-          />
-        </div>
+      <div className='flex items-center gap-2'>
+        <ThemeSwitch />
+        <Button variant='ghost' size='icon' className='h-9 w-9 rounded-full'>
+          <Settings className='h-[1.2rem] w-[1.2rem]' />
+        </Button>
         <ProfileDropdown user={user} />
       </div>
     </header>
