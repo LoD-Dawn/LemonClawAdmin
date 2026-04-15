@@ -84,39 +84,62 @@ body {
 
 .login-shell {
   background:
-    radial-gradient(circle at 14% 18%, rgba(185, 28, 28, 0.07), transparent 16%),
-    radial-gradient(circle at 86% 16%, rgba(15, 23, 42, 0.05), transparent 18%),
-    linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
+    radial-gradient(circle at 12% 22%, rgba(153, 27, 27, 0.045), transparent 18%),
+    radial-gradient(circle at 88% 18%, rgba(0, 0, 0, 0.1), transparent 22%),
+    radial-gradient(circle at 50% 100%, rgba(0, 0, 0, 0.06), transparent 34%),
+    linear-gradient(135deg, #f7f7f5 0%, #efefec 52%, #e7e7e3 100%);
 }
 
 .login-grid-overlay {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0)),
-    linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+    linear-gradient(180deg, rgba(248, 250, 252, 0.2), rgba(248, 250, 252, 0)),
+    linear-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.07) 1px, transparent 1px);
   background-size: auto, 64px 64px, 64px 64px;
-  mask-image: radial-gradient(circle at center, black 30%, transparent 84%);
+  mask-image: radial-gradient(circle at center, black 42%, rgba(0, 0, 0, 0.82) 68%, transparent 92%);
 }
 
 .login-orb {
-  height: 22rem;
-  width: 22rem;
+  height: 26rem;
+  width: 26rem;
   border-radius: 9999px;
-  filter: blur(72px);
-  opacity: 0.55;
+  filter: blur(96px);
+  opacity: 0.72;
   pointer-events: none;
 }
 
 .login-orb-primary {
-  background: rgba(249, 115, 22, 0.16);
+  background: rgba(185, 28, 28, 0.08);
 }
 
 .login-orb-secondary {
-  background: rgba(212, 175, 55, 0.16);
+  background: rgba(0, 0, 0, 0.16);
 }
 
 .login-orb-accent {
-  background: rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.login-side-glow {
+  pointer-events: none;
+  position: absolute;
+  top: 10%;
+  bottom: 10%;
+  border-radius: 9999px;
+  filter: blur(72px);
+  opacity: 0.88;
+}
+
+.login-side-glow-left {
+  left: -6rem;
+  width: 18rem;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0%, rgba(245, 245, 245, 0.38) 38%, rgba(245, 245, 245, 0) 100%);
+}
+
+.login-side-glow-right {
+  right: -5rem;
+  width: 14rem;
+  background: linear-gradient(270deg, rgba(153, 27, 27, 0.08) 0%, rgba(0, 0, 0, 0.06) 38%, rgba(0, 0, 0, 0) 100%);
 }
 
 .login-panel {

@@ -2,10 +2,23 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+function LoginBackdropDecor() {
+  return (
+    <>
+      <div className="login-grid-overlay absolute inset-0" />
+      <div className="login-orb login-orb-primary absolute left-[-10rem] top-20" />
+      <div className="login-orb login-orb-secondary absolute right-[-10rem] top-16" />
+      <div className="login-orb login-orb-accent absolute bottom-[-14rem] left-[38%]" />
+      <div className="login-side-glow login-side-glow-left hidden xl:block" />
+      <div className="login-side-glow login-side-glow-right hidden xl:block" />
+    </>
+  )
+}
+
 export function LoginSkeleton() {
   return (
     <div className="login-shell flex min-h-screen overflow-hidden">
-      <div className="login-grid-overlay absolute inset-0" />
+      <LoginBackdropDecor />
       <div className="relative mx-auto flex min-h-screen w-full max-w-[1380px] flex-col px-6 py-6 sm:px-8 lg:px-10">
         <div className="h-14 w-56 animate-pulse rounded-full bg-white/80" />
         <div className="grid flex-1 items-center gap-10 py-8 lg:grid-cols-[minmax(360px,480px)_minmax(460px,1fr)] lg:gap-16 lg:py-10">
@@ -17,15 +30,15 @@ export function LoginSkeleton() {
             </div>
             <div className="mt-8 max-w-[390px] rounded-[2rem] border border-black/10 bg-white p-6 shadow-[0_28px_60px_-42px_rgba(15,23,42,0.14)]">
               <div className="space-y-3">
-                <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-                <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-                <div className="h-12 animate-pulse rounded-2xl bg-slate-950/10" />
+                <div className="h-12 animate-pulse rounded-2xl bg-neutral-100" />
+                <div className="h-12 animate-pulse rounded-2xl bg-neutral-100" />
+                <div className="h-12 animate-pulse rounded-2xl bg-black/10" />
               </div>
             </div>
           </div>
 
           <div className="hidden min-h-[620px] rounded-[2rem] border border-black/10 bg-white/82 p-12 lg:block">
-            <div className="h-full animate-pulse rounded-[1.5rem] bg-slate-100/80" />
+            <div className="h-full animate-pulse rounded-[1.5rem] bg-neutral-100/80" />
           </div>
         </div>
       </div>
@@ -52,7 +65,7 @@ export function LoginPageShell({
 }) {
   return (
     <div className="login-shell relative min-h-screen overflow-hidden">
-      <div className="login-grid-overlay absolute inset-0" />
+      <LoginBackdropDecor />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1380px] flex-col px-6 py-6 sm:px-8 lg:px-10">
         <header className="flex items-center justify-between py-2">
@@ -65,17 +78,17 @@ export function LoginPageShell({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-slate-900">LemonClaw</p>
+                <p className="text-sm font-semibold text-neutral-950">LemonClaw</p>
                 <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium leading-none text-red-800">
                   v0.2.3
                 </span>
               </div>
-              <p className="text-xs text-slate-500">柠檬虾</p>
+              <p className="text-xs text-neutral-500">柠檬虾</p>
             </div>
           </Link>
 
           <div className="hidden lg:block">
-            <div className="inline-flex items-center rounded-full border border-black/10 bg-white/92 px-4 py-2 text-xs font-medium text-slate-600 shadow-[0_16px_30px_-28px_rgba(15,23,42,0.25)]">
+            <div className="inline-flex items-center rounded-full border border-black/10 bg-white/92 px-4 py-2 text-xs font-medium text-neutral-600 shadow-[0_16px_30px_-28px_rgba(15,23,42,0.25)]">
               统一认证
             </div>
           </div>
@@ -88,11 +101,11 @@ export function LoginPageShell({
                 {modeLabel}
               </div>
               <div className="space-y-3">
-                <h1 className="font-client-serif text-[3rem] leading-[0.95] tracking-[-0.04em] text-slate-950 sm:text-[3.8rem] lg:text-[4.6rem]">
+                <h1 className="font-client-serif text-[3rem] leading-[0.95] tracking-[-0.04em] text-neutral-950 sm:text-[3.8rem] lg:text-[4.6rem]">
                   {title}
                 </h1>
                 {description ? (
-                  <p className="max-w-[30rem] text-base leading-7 text-slate-600 sm:text-lg">
+                  <p className="max-w-[30rem] text-base leading-7 text-neutral-600 sm:text-lg">
                     {description}
                   </p>
                 ) : null}
@@ -103,25 +116,25 @@ export function LoginPageShell({
               {children}
             </section>
 
-            <footer className="pt-5 text-left text-[11px] text-slate-400">
+            <footer className="pt-5 text-left text-[11px] text-neutral-400">
               {footerText}
             </footer>
           </section>
 
-          <section className="relative hidden min-h-[620px] overflow-hidden rounded-[2rem] border border-black/10 bg-white/82 p-8 shadow-[0_30px_80px_-52px_rgba(15,23,42,0.24)] backdrop-blur lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
-            <div className="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
+          <section className="relative hidden min-h-[620px] overflow-hidden rounded-[2rem] border border-black/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.74),rgba(242,242,240,0.92))] p-8 shadow-[0_30px_80px_-52px_rgba(15,23,42,0.24)] backdrop-blur lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
+            <div className="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.22em] text-neutral-500">
               <span className="h-2 w-2 rounded-full bg-red-700" />
               Authentication
             </div>
 
             <div className="mx-auto flex max-w-[36rem] flex-1 items-center justify-center py-8 text-center">
-              <h2 className="font-client-serif text-[4rem] leading-[0.96] tracking-[-0.05em] text-slate-950 xl:text-[5.3rem]">
+              <h2 className="font-client-serif text-[4rem] leading-[0.96] tracking-[-0.05em] text-neutral-950 xl:text-[5.3rem]">
                 {showcaseTitle}
               </h2>
             </div>
 
             {showcaseDescription ? (
-              <p className="max-w-[20rem] text-sm leading-6 text-slate-500">
+              <p className="max-w-[20rem] text-sm leading-6 text-neutral-500">
                 {showcaseDescription}
               </p>
             ) : (
@@ -130,7 +143,7 @@ export function LoginPageShell({
           </section>
         </main>
 
-        <footer className="pb-1 text-center text-[11px] text-slate-400 lg:hidden">
+        <footer className="pb-1 text-center text-[11px] text-neutral-400 lg:hidden">
           {footerText}
         </footer>
       </div>

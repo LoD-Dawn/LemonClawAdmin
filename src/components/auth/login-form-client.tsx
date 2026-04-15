@@ -283,17 +283,17 @@ export function LoginFormClient({
         <CardHeader className="space-y-4 p-5 pb-0 sm:p-6 sm:pb-0">
           {!minimal ? (
             <div className="flex items-start justify-between gap-4">
-              <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_16px_24px_-18px_rgba(15,23,42,0.8)]">
+              <div className="inline-flex items-center gap-3 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm text-neutral-700">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-neutral-950 text-white shadow-[0_16px_24px_-18px_rgba(15,23,42,0.8)]">
                   <ShieldCheck className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">Secure Entry</p>
-                  <p className="font-medium text-slate-900">Access Portal</p>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">Secure Entry</p>
+                  <p className="font-medium text-neutral-900">Access Portal</p>
                 </div>
               </div>
 
-              <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+              <div className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">
                 {isAuthFlow ? '授权流程' : '统一登录'}
               </div>
             </div>
@@ -301,10 +301,10 @@ export function LoginFormClient({
 
           {showTitleBlock ? (
             <div className="space-y-3">
-              <CardTitle className="font-client-serif text-3xl tracking-tight text-slate-950 sm:text-[1.95rem]">
+              <CardTitle className="font-client-serif text-3xl tracking-tight text-neutral-950 sm:text-[1.95rem]">
                 {title}
               </CardTitle>
-              <CardDescription className="max-w-[34rem] text-sm leading-6 text-slate-500">
+              <CardDescription className="max-w-[34rem] text-sm leading-6 text-neutral-500">
                 {description}
               </CardDescription>
             </div>
@@ -317,13 +317,13 @@ export function LoginFormClient({
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-red-700/70">授权目标</p>
-                    <p className="mt-1 font-medium text-slate-900">
+                    <p className="mt-1 font-medium text-neutral-900">
                       {isDesktopAuthFlow ? '桌面客户端' : oauthClientLabel || oauth.client_id}
                     </p>
                   </div>
                   {redirectHost ? (
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Globe className="h-4 w-4 text-slate-400" />
+                    <div className="flex items-center gap-2 text-sm text-neutral-600">
+                      <Globe className="h-4 w-4 text-neutral-400" />
                       <span className="truncate">{redirectHost}</span>
                     </div>
                   ) : null}
@@ -332,7 +332,7 @@ export function LoginFormClient({
                       {scopeTokens.map((scope) => (
                         <span
                           key={scope}
-                          className="rounded-full border border-red-200 bg-white px-2.5 py-1 text-xs text-slate-700"
+                          className="rounded-full border border-red-200 bg-white px-2.5 py-1 text-xs text-neutral-700"
                         >
                           {scope}
                         </span>
@@ -345,8 +345,8 @@ export function LoginFormClient({
           ) : null}
 
           {showEntrySwitcher ? (
-            <div className="rounded-[1.4rem] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
-              当前入口：<span className="font-medium text-slate-900">{entryMode === 'enterprise' ? '企业用户登录' : '普通用户登录'}</span>
+            <div className="rounded-[1.4rem] border border-neutral-200/80 bg-neutral-50/80 px-4 py-3 text-sm text-neutral-600">
+              当前入口：<span className="font-medium text-neutral-900">{entryMode === 'enterprise' ? '企业用户登录' : '普通用户登录'}</span>
               <Link href={alternateEntryHref} className="ml-2 font-medium text-red-700 underline-offset-4 hover:underline">
                 切换到{alternateEntryLabel}
               </Link>
@@ -360,11 +360,11 @@ export function LoginFormClient({
           {entryMode === 'consumer' ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-medium text-slate-700">
+                <Label htmlFor="phone" className="text-sm font-medium text-neutral-700">
                   手机号
                 </Label>
                 <div className="relative">
-                  <Smartphone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Smartphone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                   <Input
                     id="phone"
                     name="phone"
@@ -373,13 +373,13 @@ export function LoginFormClient({
                     placeholder="请输入手机号，如 13812345678"
                     value={consumerPhone}
                     onChange={(event) => setConsumerPhone(event.target.value)}
-                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-slate-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
+                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-neutral-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="smsCode" className="text-sm font-medium text-slate-700">
+                <Label htmlFor="smsCode" className="text-sm font-medium text-neutral-700">
                   短信验证码
                 </Label>
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_148px]">
@@ -392,14 +392,14 @@ export function LoginFormClient({
                     placeholder="请输入 6 位验证码"
                     value={consumerSmsCode}
                     onChange={(event) => setConsumerSmsCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className="h-12 rounded-2xl border-black/12 bg-white text-base tracking-[0.25em] shadow-none placeholder:text-slate-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white placeholder:tracking-normal"
+                    className="h-12 rounded-2xl border-black/12 bg-white text-base tracking-[0.25em] shadow-none placeholder:text-neutral-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white placeholder:tracking-normal"
                   />
                   <Button
                     type="button"
                     variant="outline"
                     disabled={isSendingSmsCode || smsCooldown > 0}
                     onClick={handleSendVerificationCode}
-                    className="h-12 rounded-2xl border-black/12 bg-white px-4 text-slate-900 shadow-none hover:border-red-300 hover:bg-red-50 focus-visible:ring-red-100"
+                    className="h-12 rounded-2xl border-black/12 bg-white px-4 text-neutral-900 shadow-none hover:border-red-300 hover:bg-red-50 focus-visible:ring-red-100"
                   >
                     {isSendingSmsCode
                       ? '发送中...'
@@ -408,7 +408,7 @@ export function LoginFormClient({
                         : '发送验证码'}
                   </Button>
                 </div>
-                <p className="text-xs leading-5 text-slate-500">
+                <p className="text-xs leading-5 text-neutral-500">
                   未注册手机号在验证码校验通过后会自动创建普通用户账号。
                 </p>
               </div>
@@ -416,28 +416,28 @@ export function LoginFormClient({
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor="identifier" className="text-sm font-medium text-slate-700">
+                <Label htmlFor="identifier" className="text-sm font-medium text-neutral-700">
                   邮箱
                 </Label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                   <Input
                     id="identifier"
                     name="identifier"
                     type="email"
                     required
                     placeholder="name@company.com"
-                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-slate-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
+                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-neutral-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                <Label htmlFor="password" className="text-sm font-medium text-neutral-700">
                   密码
                 </Label>
                 <div className="relative">
-                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                   <Input
                     id="password"
                     name="password"
@@ -445,7 +445,7 @@ export function LoginFormClient({
                     required
                     minLength={8}
                     placeholder="请输入登录密码"
-                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-slate-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
+                    className="h-12 rounded-2xl border-black/12 bg-white pl-11 shadow-none placeholder:text-neutral-400 focus-visible:border-red-700 focus-visible:ring-red-100 focus-visible:bg-white"
                   />
                 </div>
               </div>
@@ -453,13 +453,13 @@ export function LoginFormClient({
           )}
 
           {successMessage ? (
-            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <p className="rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
               {successMessage}
             </p>
           ) : null}
 
           {error ? (
-            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </p>
           ) : null}
@@ -483,11 +483,11 @@ export function LoginFormClient({
         </form>
 
         {!minimal ? (
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] leading-5 text-slate-400">
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-neutral-200 pt-4 text-[11px] leading-5 text-neutral-400">
             <p className="max-w-[16rem]">
               登录后将按角色权限访问对应资源。
             </p>
-            <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-500">
+            <div className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-neutral-500">
               TLS / OAuth
             </div>
           </div>
