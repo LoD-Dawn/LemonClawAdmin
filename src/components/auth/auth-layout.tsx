@@ -14,23 +14,24 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   return (
     <div className="min-h-screen bg-[#fcfcfb] text-neutral-950">
       <div className="grid min-h-screen lg:grid-cols-2">
-        <section className="relative hidden min-h-screen overflow-hidden bg-[#717d93] text-white lg:flex lg:flex-col">
-          <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:24px_24px]" />
+        <section className="relative hidden min-h-screen overflow-hidden bg-[#09090b] text-white lg:flex lg:flex-col">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_center,rgba(127,29,29,0.22),transparent_38%),linear-gradient(180deg,rgba(9,9,11,0),rgba(9,9,11,0.22))]" />
+          <div className="absolute inset-0 opacity-[0.035] [background-image:radial-gradient(circle_at_center,rgba(255,255,255,0.72)_1px,transparent_1px)] [background-size:24px_24px]" />
 
           <div className="relative flex min-h-screen items-center justify-center px-10 py-12 xl:px-14">
             <div className="w-full max-w-[44rem] text-center">
               <div className="mb-6 flex items-center justify-center gap-4">
                 <Link href="/" className="contents">
-                  <div className="relative h-24 w-24 overflow-hidden rounded-[2rem] bg-white/10 shadow-[0_30px_60px_-42px_rgba(0,0,0,0.45)]">
+                  <div className="relative h-24 w-24 overflow-hidden rounded-[2rem] bg-white/[0.08] shadow-[0_34px_70px_-42px_rgba(0,0,0,0.82)]">
                     <Image src="/images/Logo.png" alt="LemonClaw" fill sizes="96px" className="object-cover" />
                   </div>
                   <div className="text-left">
-                    <span className="block text-[5.25rem] font-semibold tracking-[-0.06em] text-white/95 xl:text-[6rem]">
+                    <span className="block text-[5.25rem] font-semibold tracking-[-0.06em] text-white [text-shadow:0_18px_40px_rgba(255,255,255,0.08)] xl:text-[6rem]">
                       LemonClaw
                     </span>
                     <div className="ml-1 mt-2 flex items-center gap-3">
                       <span className="h-px w-8 bg-white/25" />
-                      <span className="text-[0.95rem] font-semibold tracking-[0.18em] text-white/74">
+                      <span className="text-[0.95rem] font-semibold tracking-[0.18em] text-white/82">
                         柠檬虾
                       </span>
                     </div>

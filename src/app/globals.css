@@ -210,9 +210,9 @@
 
 .login-terminal {
   border: 1px solid rgba(255, 255, 255, 0.14);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.34), rgba(15, 23, 42, 0.5));
+  background: linear-gradient(180deg, rgba(33, 35, 44, 0.74), rgba(30, 32, 41, 0.92));
   border-radius: 1.5rem;
-  box-shadow: 0 32px 60px -42px rgba(15, 23, 42, 0.75);
+  box-shadow: 0 38px 80px -46px rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(10px);
   min-height: 15rem;
 }
