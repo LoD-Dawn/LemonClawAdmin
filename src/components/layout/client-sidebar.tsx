@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { ArrowUpRight, Cpu, Home, Layers3, LogOut, ShieldCheck, UserRound } from 'lucide-react'
+import { ArrowUpRight, Cpu, Layers3, LogOut, ShieldCheck, UserRound } from 'lucide-react'
 
 interface ClientSidebarProps {
   user: {
@@ -40,12 +40,6 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
       label: '个人概览',
       description: '查看额度、最近调用与账号信息',
       icon: UserRound,
-    },
-    {
-      href: '/client',
-      label: '资源首页',
-      description: '浏览已开通资源与可申请能力',
-      icon: Home,
     },
     ...(canManage
       ? [

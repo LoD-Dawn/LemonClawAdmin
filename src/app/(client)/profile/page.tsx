@@ -14,18 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { PhoneBindingCard } from '@/components/client/phone-binding-card'
-import {
-  ArrowLeft,
-  ArrowRight,
-  CalendarClock,
-  Clock3,
-  Crown,
-  CreditCard,
-  ShieldCheck,
-  Sparkles,
-  UserRound,
-  Wallet,
-} from 'lucide-react'
+import { ArrowRight, CalendarClock, Clock3, Crown, CreditCard, ShieldCheck, Sparkles, UserRound, Wallet } from 'lucide-react'
 
 export const runtime = 'nodejs'
 
@@ -247,8 +236,8 @@ export default async function ProfilePage() {
           description: '当前账号通过企业入口使用平台资源，可查看个人额度与最近调用情况。',
           badgeClassName: 'border-sky-200 bg-sky-50 text-sky-700',
           progressClassName: 'bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400',
-          actionHref: '/client',
-          actionLabel: '查看资源首页',
+          actionHref: '/profile',
+          actionLabel: '查看个人概览',
           icon: <ShieldCheck className="h-4 w-4" />,
         }
       : {
@@ -257,8 +246,8 @@ export default async function ProfilePage() {
           description: `基础功能已开通，默认赠送 ${SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS} 积分额度，适合体验用户。`,
           badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
           progressClassName: 'bg-slate-900',
-          actionHref: '/client',
-          actionLabel: '升级套餐',
+          actionHref: '/profile',
+          actionLabel: '查看当前额度',
           icon: <Sparkles className="h-4 w-4" />,
         }
 
@@ -273,19 +262,6 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-[1240px] space-y-6">
-      <div className="flex items-center">
-        <Button
-          asChild
-          variant="ghost"
-          className="h-auto rounded-full px-2 text-slate-500 hover:bg-transparent hover:text-slate-800"
-        >
-          <Link href="/client">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            返回首页
-          </Link>
-        </Button>
-      </div>
-
       <div className="space-y-6">
         <Card className="rounded-[30px] border-white/85 bg-white/78 shadow-[0_28px_70px_-48px_rgba(15,23,42,0.28)]">
           <CardContent className="p-6 sm:p-7">
@@ -332,13 +308,6 @@ export default async function ProfilePage() {
                         {tierMeta.actionLabel}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                      className="rounded-2xl border-slate-200 bg-white/90 px-6 text-slate-700 hover:bg-white"
-                    >
-                      <Link href="/client">资源首页</Link>
                     </Button>
                   </div>
                 </div>
