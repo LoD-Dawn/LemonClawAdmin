@@ -37,8 +37,8 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
   const navItems = [
     {
       href: '/profile',
-      label: '个人概览',
-      description: '查看额度、最近调用与账号信息',
+      label: '个人设置',
+      description: '查看额度、资料、绑定状态与调用记录',
       icon: UserRound,
     },
     ...(canManage
