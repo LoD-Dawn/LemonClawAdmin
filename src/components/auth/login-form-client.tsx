@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   ArrowRight,
   Globe,
@@ -106,6 +106,11 @@ export function LoginFormClient({
   const description = descriptionOverride || defaultDescription
   const showTitleBlock = !minimal
   const showHeader = showTitleBlock || isAuthFlow || showEntrySwitcher
+  const submitLabel = isSubmitting
+    ? '处理中...'
+    : entryMode === 'enterprise'
+      ? '继续登录'
+      : '继续'
 
   async function finishAuthFlow() {
     if (isOAuthFlow) {
@@ -275,6 +280,175 @@ export function LoginFormClient({
     } finally {
       setIsSendingSmsCode(false)
     }
+  }
+
+  if (minimal) {
+    return (
+      <Card className="w-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_28px_60px_-34px_rgba(15,23,42,0.22)]">
+        <CardHeader className="space-y-3 px-8 pt-8 text-center">
+          <CardTitle className="text-[1.95rem] font-semibold tracking-tight text-neutral-950">
+            {title}
+          </CardTitle>
+          <CardDescription className="mx-auto max-w-[28rem] text-[15px] leading-6 text-neutral-500">
+            {description}
+          </CardDescription>
+
+          {isAuthFlow ? (
+            <div className="mt-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 text-left">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-red-700" />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-neutral-900">
+                    {isDesktopAuthFlow ? '桌面客户端授权' : `正在授权 ${oauthClientLabel || oauth.client_id}`}
+                  </p>
+                  {redirectHost ? (
+                    <div className="flex items-center gap-2 text-sm text-neutral-600">
+                      <Globe className="h-4 w-4 text-neutral-400" />
+                      <span className="truncate">{redirectHost}</span>
+                    </div>
+                  ) : null}
+                  {scopeTokens.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {scopeTokens.map((scope) => (
+                        <span key={scope} className="rounded-full border border-red-200 bg-white px-2 py-0.5 text-[11px] text-neutral-600">
+                          {scope}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </CardHeader>
+
+        <CardContent className="px-8 pb-8 pt-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {entryMode === 'consumer' ? (
+              <div className="space-y-5">
+                <div className="space-y-2.5">
+                  <Label htmlFor="phone" className="text-sm font-medium text-neutral-900">
+                    手机号
+                  </Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    required
+                    placeholder="请输入手机号，如 13812345678"
+                    value={consumerPhone}
+                    onChange={(event) => setConsumerPhone(event.target.value)}
+                    className="h-12 rounded-xl border-black/12 bg-white px-4 text-[15px] shadow-none placeholder:text-neutral-400 focus-visible:border-red-500 focus-visible:ring-red-100"
+                  />
+                </div>
+
+                <div className="space-y-2.5">
+                  <Label htmlFor="smsCode" className="text-sm font-medium text-neutral-900">
+                    短信验证码
+                  </Label>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
+                    <Input
+                      id="smsCode"
+                      name="smsCode"
+                      required
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="请输入 6 位验证码"
+                      value={consumerSmsCode}
+                      onChange={(event) => setConsumerSmsCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="h-12 rounded-xl border-black/12 bg-white px-4 text-[15px] shadow-none placeholder:text-neutral-400 focus-visible:border-red-500 focus-visible:ring-red-100"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSendingSmsCode || smsCooldown > 0}
+                      onClick={handleSendVerificationCode}
+                      className="h-12 rounded-xl border-black/12 bg-white text-sm font-medium text-neutral-900 shadow-none hover:bg-neutral-50 focus-visible:ring-red-100"
+                    >
+                      {isSendingSmsCode ? '发送中...' : smsCooldown > 0 ? `${smsCooldown}s` : '发送验证码'}
+                    </Button>
+                  </div>
+                  <p className="text-xs leading-5 text-neutral-500">
+                    首次使用该手机号会自动创建普通用户账号。
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <div className="space-y-2.5">
+                  <Label htmlFor="identifier" className="text-sm font-medium text-neutral-900">
+                    邮箱地址
+                  </Label>
+                  <Input
+                    id="identifier"
+                    name="identifier"
+                    type="email"
+                    required
+                    placeholder="输入你的企业邮箱"
+                    className="h-12 rounded-xl border-black/12 bg-white px-4 text-[15px] shadow-none placeholder:text-neutral-400 focus-visible:border-red-500 focus-visible:ring-red-100"
+                  />
+                </div>
+
+                <div className="space-y-2.5">
+                  <Label htmlFor="password" className="text-sm font-medium text-neutral-900">
+                    密码
+                  </Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    minLength={8}
+                    placeholder="输入你的登录密码"
+                    className="h-12 rounded-xl border-black/12 bg-white px-4 text-[15px] shadow-none placeholder:text-neutral-400 focus-visible:border-red-500 focus-visible:ring-red-100"
+                  />
+                </div>
+              </div>
+            )}
+
+            {successMessage ? (
+              <p className="rounded-xl border border-black/10 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                {successMessage}
+              </p>
+            ) : null}
+
+            {error ? (
+              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </p>
+            ) : null}
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="group h-12 w-full rounded-xl bg-gradient-to-b from-neutral-700 via-neutral-800 to-neutral-950 text-base font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_22px_-14px_rgba(0,0,0,0.45)] hover:from-neutral-800 hover:to-black focus-visible:ring-red-100"
+            >
+              <span>{submitLabel}</span>
+              {!isSubmitting ? <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" /> : null}
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter className="flex-col border-t border-black/10 bg-neutral-50/65 px-8 py-5 text-center">
+          {showEntrySwitcher ? (
+            <p className="text-sm text-neutral-500">
+              当前使用
+              <span className="mx-1 font-medium text-neutral-900">
+                {entryMode === 'enterprise' ? '企业入口' : '普通入口'}
+              </span>
+              <Link href={alternateEntryHref} className="font-medium text-neutral-900 underline underline-offset-4 hover:text-red-700">
+                切换到{alternateEntryLabel}
+              </Link>
+            </p>
+          ) : (
+            <p className="text-sm text-neutral-500">企业成员使用管理员分配的账号进行登录。</p>
+          )}
+          <p className="mt-4 text-xs font-medium tracking-[0.08em] text-neutral-400">
+            Secured by LemonClaw
+          </p>
+        </CardFooter>
+      </Card>
+    )
   }
 
   return (

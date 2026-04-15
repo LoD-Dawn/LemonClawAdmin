@@ -208,6 +208,72 @@
   box-shadow: 0 4px 6px -1px hsl(var(--foreground) / 0.05);
 }
 
+.login-terminal {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.34), rgba(15, 23, 42, 0.5));
+  border-radius: 1.5rem;
+  box-shadow: 0 32px 60px -42px rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(10px);
+}
+
+.login-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 1.15rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.login-terminal-body {
+  padding: 1.15rem;
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.92rem;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.login-terminal-line {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.8rem;
+  white-space: nowrap;
+}
+
+.login-terminal-prompt {
+  color: rgba(248, 113, 113, 0.95);
+}
+
+.login-terminal-typing {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  border-right: 1px solid rgba(255, 255, 255, 0.9);
+  animation: loginTerminalTyping 4.8s steps(23, end) infinite, loginTerminalCursor 900ms step-end infinite;
+}
+
+.login-terminal-output {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
+.login-terminal-output-1 {
+  animation: loginTerminalFade 4.8s infinite;
+  animation-delay: 1.2s;
+}
+
+.login-terminal-output-2 {
+  animation: loginTerminalFade 4.8s infinite;
+  animation-delay: 2.4s;
+}
+
+.login-terminal-output-3 {
+  animation: loginTerminalFade 4.8s infinite;
+  animation-delay: 3.3s;
+}
+
 /* ──────────── Collapsible animation ──────────── */
 .CollapsibleContent {
   overflow: hidden;
@@ -227,6 +293,48 @@
 @keyframes slideUp {
   from { height: var(--radix-collapsible-content-height); }
   to { height: 0; }
+}
+
+@keyframes loginTerminalTyping {
+  0%,
+  8% {
+    width: 0;
+  }
+  40%,
+  78% {
+    width: var(--terminal-width, 22ch);
+  }
+  100% {
+    width: var(--terminal-width, 22ch);
+  }
+}
+
+@keyframes loginTerminalCursor {
+  0%,
+  50% {
+    border-color: rgba(255, 255, 255, 0.88);
+  }
+  50.01%,
+  100% {
+    border-color: transparent;
+  }
+}
+
+@keyframes loginTerminalFade {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  18%,
+  84% {
+    opacity: 0.86;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
 }
 
 /* ──────────── Utility: faded bottom ──────────── */

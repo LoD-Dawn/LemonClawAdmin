@@ -11,13 +11,36 @@ import {
 } from '@/lib/user-claw-quota-policy'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { PhoneBindingCard } from '@/components/client/phone-binding-card'
 import { ProfileSettingsNav } from '@/components/client/profile-settings-nav'
 import { ProfileSettingsSection } from '@/components/client/profile-settings-section'
-import { ArrowRight, CalendarClock, Clock3, Crown, CreditCard, ShieldCheck, Sparkles, UserRound, Wallet } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarClock,
+  Clock3,
+  Crown,
+  CreditCard,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+  Wallet,
+} from 'lucide-react'
 
 export const runtime = 'nodejs'
 
@@ -56,7 +79,7 @@ function formatDuration(seconds: number) {
   return restSeconds > 0 ? `${minutes} 分 ${restSeconds} 秒` : `${minutes} 分钟`
 }
 
-function SummaryCard({
+function OverviewMetricCard({
   label,
   value,
   suffix,
@@ -70,21 +93,34 @@ function SummaryCard({
   icon: React.ReactNode
 }) {
   return (
-    <Card className="rounded-[24px] border-slate-200/80 bg-white shadow-[0_20px_60px_-42px_rgba(15,23,42,0.2)]">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-slate-500">{label}</p>
-            <div className="mt-3 flex items-end gap-2">
-              <p className="text-4xl font-semibold tracking-tight text-slate-950">{value}</p>
-              {suffix ? <span className="pb-1 text-sm text-slate-400">{suffix}</span> : null}
-            </div>
+    <Card>
+      <CardContent className="flex items-start justify-between gap-4 p-6">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <div className="flex items-end gap-2">
+            <p className="text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+            {suffix ? <span className="pb-1 text-sm text-muted-foreground">{suffix}</span> : null}
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-slate-700">{icon}</div>
+          <p className="text-sm leading-6 text-muted-foreground">{note}</p>
         </div>
-        <p className="mt-4 text-sm leading-6 text-slate-500">{note}</p>
+        <div className="rounded-lg border bg-muted/40 p-2.5 text-muted-foreground">{icon}</div>
       </CardContent>
     </Card>
+  )
+}
+
+function DetailItem({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-foreground">{value}</p>
+    </div>
   )
 }
 
@@ -225,9 +261,9 @@ export default async function ProfilePage() {
     ? {
         label: '管理席位',
         note: user.isSuperAdmin ? '超级管理员' : '部门管理员',
-        description: '当前账号拥有管理特权，使用记录仍会展示，但不受普通积分配额限制。',
+        description: '当前账号拥有管理级权限，不受普通积分配额限制，但仍保留调用记录与消耗统计。',
         badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
-        progressClassName: 'bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500',
+        progressClassName: 'bg-amber-500',
         actionHref: '/dashboard',
         actionLabel: '进入管理控制台',
         icon: <Crown className="h-4 w-4" />,
@@ -236,9 +272,9 @@ export default async function ProfilePage() {
       ? {
           label: '企业成员',
           note: '当前套餐',
-          description: '当前账号通过企业入口使用平台资源，可查看个人额度与最近调用情况。',
+          description: '当前账号通过企业入口使用平台资源，可查看个人额度、组织归属与最近使用情况。',
           badgeClassName: 'border-sky-200 bg-sky-50 text-sky-700',
-          progressClassName: 'bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400',
+          progressClassName: 'bg-sky-600',
           actionHref: '/profile',
           actionLabel: '查看个人概览',
           icon: <ShieldCheck className="h-4 w-4" />,
@@ -246,7 +282,7 @@ export default async function ProfilePage() {
       : {
           label: '免费版',
           note: '当前套餐',
-          description: `基础功能已开通，默认赠送 ${SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS} 积分额度，适合体验用户。`,
+          description: `基础功能已开通，默认赠送 ${SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS} 积分额度，适合普通用户试用。`,
           badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
           progressClassName: 'bg-slate-900',
           actionHref: '/profile',
@@ -264,103 +300,117 @@ export default async function ProfilePage() {
   const needsPhoneBinding = session.user.requiresPhoneBinding || !user.phone
 
   return (
-    <div className="mx-auto max-w-[1380px] space-y-6">
+    <div className="space-y-6">
       <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">Client Settings</p>
-        <h1 className="font-client-serif text-4xl text-slate-950 sm:text-[2.7rem]">个人设置</h1>
-        <p className="max-w-3xl text-sm leading-7 text-slate-500 sm:text-base">
-          用 settings 的结构整理当前账号信息，统一查看额度、组织身份、手机号绑定状态与最近调用记录。
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">个人设置</h1>
+        <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+          参考 `shadcn-admin` 的 settings 页面重构，统一查看当前账号额度、登录资料、组织身份和最近调用记录。
         </p>
       </div>
 
-      <Separator className="bg-slate-200/80" />
+      <Separator />
 
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="xl:sticky xl:top-6 xl:self-start">
+      <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
+        <aside className="lg:sticky lg:top-6 lg:w-64 lg:self-start">
           <ProfileSettingsNav />
         </aside>
 
-        <div className="space-y-6">
+        <div className="min-w-0 flex-1 space-y-10">
           <ProfileSettingsSection
             id="overview"
             eyebrow="Overview"
             title="额度与套餐总览"
-            description="这一部分对齐 settings 首页的核心概览区，保留当前账号的额度进度、套餐身份和关键使用统计。"
+            description="这一部分集中展示套餐身份、额度进度和关键使用统计。"
           >
-            <Card className="rounded-[28px] border-slate-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.95))] shadow-none">
-              <CardContent className="p-6 sm:p-7">
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-client-serif text-3xl text-slate-950">{tierMeta.label}</h3>
-                        <Badge className={cn('px-3 py-1', tierMeta.badgeClassName)}>
-                          {tierMeta.note}
-                        </Badge>
-                      </div>
-                      <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">{tierMeta.description}</p>
-                    </div>
-                    <Badge className="border-slate-200 bg-white/90 px-3 py-1 text-sm text-slate-500">{quotaNote}</Badge>
+            <Card>
+              <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className="text-2xl">{tierMeta.label}</CardTitle>
+                    <Badge className={cn('px-2.5 py-0.5', tierMeta.badgeClassName)}>
+                      <span className="mr-1 inline-flex">{tierMeta.icon}</span>
+                      {tierMeta.note}
+                    </Badge>
                   </div>
+                  <CardDescription className="max-w-2xl leading-6">
+                    {tierMeta.description}
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="w-fit">
+                  {quotaNote}
+                </Badge>
+              </CardHeader>
+              <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px]">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+                    <span>剩余额度</span>
+                    {!isUnlimited && quotaCap ? (
+                      <span className="font-medium text-foreground">
+                        {formatCredits(remainingCredits)} / {formatCredits(quotaCap)} 积分
+                      </span>
+                    ) : (
+                      <span className="font-medium text-foreground">当前账号无限制</span>
+                    )}
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn('h-full rounded-full transition-all duration-300', tierMeta.progressClassName)}
+                      style={{ width: `${quotaProgress}%` }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                      <p className="text-3xl font-semibold tracking-tight text-foreground">
+                        {isUnlimited ? '无限制' : formatCredits(remainingCredits)}
+                        {!isUnlimited ? (
+                          <span className="ml-2 text-base font-medium text-muted-foreground">
+                            积分
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">定价版本 {pricingVersion}</p>
+                    </div>
+                    <Button asChild>
+                      <Link href={tierMeta.actionHref}>
+                        {tierMeta.actionLabel}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-4 text-sm text-slate-500">
-                      <span>剩余额度</span>
-                      {!isUnlimited && quotaCap ? (
-                        <span className="font-medium text-slate-700">
-                          {formatCredits(remainingCredits)} / {formatCredits(quotaCap)} 积分
-                        </span>
-                      ) : (
-                        <span className="font-medium text-slate-700">当前账号无限制</span>
-                      )}
-                    </div>
-                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className={cn('h-full rounded-full transition-all duration-300', tierMeta.progressClassName)}
-                        style={{ width: `${quotaProgress}%` }}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-end justify-between gap-4">
-                      <div>
-                        <p className="text-4xl font-semibold tracking-tight text-slate-950">
-                          {isUnlimited ? '无限制' : formatCredits(remainingCredits)}
-                          {!isUnlimited ? <span className="ml-2 text-base font-medium text-slate-400">积分</span> : null}
-                        </p>
-                        <p className="mt-2 text-sm text-slate-500">定价版本 {pricingVersion}</p>
-                      </div>
-                      <Button asChild className="rounded-2xl bg-slate-950 px-6 text-white hover:bg-slate-800">
-                        <Link href={tierMeta.actionHref}>
-                          {tierMeta.actionLabel}
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <div className="space-y-4">
+                    <DetailItem label="账号类型" value={user.accountType === 'enterprise' ? '企业成员' : '普通用户'} />
+                    <DetailItem label="组织" value={user.organization?.name ?? '未绑定组织'} />
+                    <DetailItem label="部门" value={user.department?.name ?? '无'} />
+                    <DetailItem label="创建时间" value={formatDateTime(user.createdAt)} />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-              <SummaryCard
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <OverviewMetricCard
                 label="总会话数"
                 value={String(totalSessions)}
                 note="当前账号累计完成的调用会话数"
                 icon={<UserRound className="h-5 w-5" />}
               />
-              <SummaryCard
+              <OverviewMetricCard
                 label="近 7 日会话"
                 value={String(weeklySessions)}
                 note={`近 7 日共消耗 ${formatCredits(weeklyConsumedCredits)} 积分`}
                 icon={<CalendarClock className="h-5 w-5" />}
               />
-              <SummaryCard
+              <OverviewMetricCard
                 label="今日用量"
                 value={isUnlimited ? '无限制' : formatCredits(todayConsumedCredits)}
                 suffix={isUnlimited ? undefined : '积分'}
                 note={isUnlimited ? '管理席位不受普通积分限制' : '按今日已结束会话计算'}
                 icon={<CreditCard className="h-5 w-5" />}
               />
-              <SummaryCard
+              <OverviewMetricCard
                 label="剩余额度"
                 value={isUnlimited ? '无限制' : formatCredits(remainingCredits)}
                 suffix={isUnlimited ? undefined : '积分'}
@@ -374,32 +424,58 @@ export default async function ProfilePage() {
             id="account"
             eyebrow="Account"
             title="登录与联系信息"
-            description="参考 settings 的 profile/account 分组，把用户最常查看的登录方式和联系资料集中展示。"
+            description="参考 settings 的 account/profile 分区，把登录方式和联系资料集中展示。"
           >
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge className={needsPhoneBinding ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}>
+            <div className="flex flex-wrap gap-2">
+              <Badge
+                className={
+                  needsPhoneBinding
+                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                }
+              >
                 {needsPhoneBinding ? '待绑定手机号' : '手机号已绑定'}
               </Badge>
-              <Badge className="border-slate-200 bg-slate-100 text-slate-600">
+              <Badge variant="outline">
                 {user.accountType === 'enterprise' ? '邮箱 + 密码登录' : '手机号 + 验证码登录'}
               </Badge>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">邮箱</p>
-                <p className="mt-3 text-lg font-semibold text-slate-950">{user.email}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-500">邮箱保留为通知与资料字段，可用于接收系统说明和登录辅助信息。</p>
-              </div>
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">手机号</p>
-                <p className="mt-3 text-lg font-semibold text-slate-950">{user.phone ?? '未绑定'}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  {needsPhoneBinding
-                    ? '普通用户入口已切换为手机号登录，请先完成绑定后再继续使用工作台。'
-                    : '手机号已作为普通用户入口的默认验证方式。'}
-                </p>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">基本资料</CardTitle>
+                  <CardDescription>当前账号的主要识别信息与联系字段。</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2">
+                  <DetailItem label="姓名" value={user.name ?? '未设置'} />
+                  <DetailItem label="邮箱" value={user.email ?? '未设置'} />
+                  <DetailItem label="手机号" value={user.phone ?? '未绑定'} />
+                  <DetailItem
+                    label="登录方式"
+                    value={user.accountType === 'enterprise' ? '邮箱 + 密码' : '手机号 + 验证码'}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">登录说明</CardTitle>
+                  <CardDescription>当前账号在普通入口或企业入口下的使用规则。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
+                  <p>
+                    {user.accountType === 'enterprise'
+                      ? '企业成员通过企业入口登录，访问范围由组织、部门和具体授权共同决定。'
+                      : '普通用户默认走手机号验证流程，手机号会作为后续登录和安全校验的基础信息。'}
+                  </p>
+                  <p>
+                    {needsPhoneBinding
+                      ? '当前账号还需要先完成手机号绑定，绑定成功后工作台限制会自动解除。'
+                      : '当前账号已经满足登录校验要求，可以正常继续使用个人工作台。'}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </ProfileSettingsSection>
 
@@ -407,50 +483,48 @@ export default async function ProfilePage() {
             id="organization"
             eyebrow="Organization"
             title="组织与身份归属"
-            description="展示账号归属、管理权限与当前访问范围，方便判断资源可见性与审批路径。"
+            description="展示账号归属、管理权限与当前访问范围，便于判断资源可见性和审批路径。"
           >
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-              <Card className="rounded-[26px] border-slate-200/80 shadow-none">
-                <CardContent className="grid gap-4 p-6 text-sm text-slate-600 sm:grid-cols-2">
-                  <div>
-                    <div className="text-slate-400">姓名</div>
-                    <div className="mt-1 font-medium text-slate-950">{user.name}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-400">账号类型</div>
-                    <div className="mt-1 font-medium text-slate-950">{user.accountType === 'enterprise' ? '企业成员' : '普通用户'}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-400">组织</div>
-                    <div className="mt-1 font-medium text-slate-950">{user.organization?.name ?? '未绑定组织'}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-400">部门</div>
-                    <div className="mt-1 font-medium text-slate-950">{user.department?.name ?? '无'}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-400">创建时间</div>
-                    <div className="mt-1 font-medium text-slate-950">{formatDateTime(user.createdAt)}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-400">权限级别</div>
-                    <div className="mt-1 font-medium text-slate-950">
-                      {user.isSuperAdmin ? '超级管理员' : user.isDepartmentAdmin ? '部门管理员' : '标准使用者'}
-                    </div>
-                  </div>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">组织信息</CardTitle>
+                  <CardDescription>当前账号的组织归属和权限级别。</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2">
+                  <DetailItem label="账号类型" value={user.accountType === 'enterprise' ? '企业成员' : '普通用户'} />
+                  <DetailItem
+                    label="权限级别"
+                    value={
+                      user.isSuperAdmin
+                        ? '超级管理员'
+                        : user.isDepartmentAdmin
+                          ? '部门管理员'
+                          : '标准使用者'
+                    }
+                  />
+                  <DetailItem label="组织" value={user.organization?.name ?? '未绑定组织'} />
+                  <DetailItem label="部门" value={user.department?.name ?? '无'} />
+                  <DetailItem label="创建时间" value={formatDateTime(user.createdAt)} />
+                  <DetailItem label="用户 ID" value={user.id} />
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[26px] border-slate-200/80 bg-slate-950 text-white shadow-none">
-                <CardContent className="p-6">
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Access Note</p>
-                  <h3 className="mt-3 text-2xl font-semibold">当前访问说明</h3>
-                  <p className="mt-3 text-sm leading-7 text-slate-300">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">访问说明</CardTitle>
+                  <CardDescription>按当前身份解释资源可见性与额度规则。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
+                  <p>
                     {isUnlimited
-                      ? '你当前拥有管理级权限，平台仍记录会话和消耗，但不会按普通积分额度进行限制。'
+                      ? '当前账号拥有管理级权限，平台会记录会话和消耗，但不会按普通积分额度限制访问。'
                       : user.accountType === 'enterprise'
-                        ? '企业成员的资源可见性受组织、部门和资源授权共同控制。'
+                        ? '企业成员可见资源受组织、部门和资源授权共同控制。'
                         : '普通用户默认进入个人工作台，资源访问以个人额度和已获授权为准。'}
+                  </p>
+                  <p>
+                    部门级资源通常需要审批或授权后才可调用，个人级资源仅所有者可见，组织级资源会在组织树内共享。
                   </p>
                 </CardContent>
               </Card>
@@ -461,28 +535,21 @@ export default async function ProfilePage() {
             id="security"
             eyebrow="Security"
             title="手机号绑定与安全校验"
-            description="保留现有绑定能力，但把它并入 settings 的安全分区里，避免独立块状页面割裂。"
+            description="保留现有手机号绑定能力，但以标准设置卡片方式接入，不再使用独立的大型视觉模块。"
           >
             {needsPhoneBinding ? (
-              <PhoneBindingCard
-                initialPhone={user.phone}
-                required={session.user.requiresPhoneBinding}
-              />
+              <PhoneBindingCard initialPhone={user.phone} required={session.user.requiresPhoneBinding} />
             ) : (
-              <div className="rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <Badge className="border-emerald-200 bg-white/85 text-emerald-700">校验通过</Badge>
-                    <h3 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">手机号已完成绑定</h3>
-                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                      当前账号已经具备普通用户入口所需的手机号校验条件。后续登录会默认走手机号 + 验证码流程。
-                    </p>
-                  </div>
-                  <div className="rounded-[22px] border border-emerald-200 bg-white/80 px-4 py-3 text-sm text-slate-700">
-                    已绑定号码：<span className="font-semibold text-slate-950">{user.phone}</span>
-                  </div>
-                </div>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">校验通过</CardTitle>
+                  <CardDescription>当前账号已经满足普通用户入口所需的手机号校验条件。</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2">
+                  <DetailItem label="已绑定号码" value={user.phone ?? '未绑定'} />
+                  <DetailItem label="状态" value="后续登录默认走手机号 + 验证码流程" />
+                </CardContent>
+              </Card>
             )}
           </ProfileSettingsSection>
 
@@ -490,29 +557,27 @@ export default async function ProfilePage() {
             id="usage"
             eyebrow="Usage"
             title="最近调用记录"
-            description="延续原有调用明细，但使用 settings 右侧内容区的单栏展示方式，阅读路径更稳定。"
+            description="延续现有调用明细，但用更接近后台 settings 的内容区样式来展示。"
           >
-            <Card className="rounded-[28px] border-slate-200/80 shadow-none">
-              <CardContent className="p-0">
-                <div className="border-b border-slate-200/80 px-6 py-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-950">最近 8 条已结束会话</h3>
-                      <p className="mt-1 text-sm text-slate-500">包含模型、时长和最终消耗积分。</p>
-                    </div>
-                    <Badge className="border-slate-200 bg-white/80 px-3 py-1 text-slate-500">最近更新</Badge>
-                  </div>
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <CardTitle className="text-base">最近 8 条已结束会话</CardTitle>
+                  <CardDescription>包含模型、时长和最终消耗积分。</CardDescription>
                 </div>
+                <Badge variant="outline">最近更新</Badge>
+              </CardHeader>
 
+              <CardContent className="p-0">
                 {recentSessions.length > 0 ? (
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-slate-200/80">
-                        <TableHead className="h-12 px-6 text-slate-500">消息</TableHead>
-                        <TableHead className="text-slate-500">时间</TableHead>
-                        <TableHead className="text-slate-500">模型</TableHead>
-                        <TableHead className="text-slate-500">输入/输出</TableHead>
-                        <TableHead className="px-6 text-right text-slate-500">消耗积分</TableHead>
+                      <TableRow>
+                        <TableHead className="px-6">消息</TableHead>
+                        <TableHead>时间</TableHead>
+                        <TableHead>模型</TableHead>
+                        <TableHead>时长</TableHead>
+                        <TableHead className="px-6 text-right">消耗积分</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -524,26 +589,28 @@ export default async function ProfilePage() {
                             : '在线调用'
 
                         return (
-                          <TableRow key={sessionItem.id} className="border-slate-100/90">
+                          <TableRow key={sessionItem.id}>
                             <TableCell className="px-6 py-4">
                               <div className="space-y-1">
-                                <p className="font-medium text-slate-900">{sessionLabel || '会话记录'}</p>
-                                <p className="text-xs text-slate-500">{sessionItem.finishReason || sessionItem.clientSessionId}</p>
+                                <p className="font-medium text-foreground">{sessionLabel || '会话记录'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {sessionItem.finishReason || sessionItem.clientSessionId}
+                                </p>
                               </div>
                             </TableCell>
-                            <TableCell className="py-4 text-sm text-slate-600">
+                            <TableCell className="py-4 text-sm text-muted-foreground">
                               {formatDateTime(sessionItem.closedAt ?? sessionItem.createdAt)}
                             </TableCell>
                             <TableCell className="py-4">
                               <div className="space-y-1">
-                                <p className="font-medium text-slate-900">{sessionItem.model}</p>
-                                <p className="text-xs text-slate-500">{sessionItem.provider}</p>
+                                <p className="font-medium text-foreground">{sessionItem.model}</p>
+                                <p className="text-xs text-muted-foreground">{sessionItem.provider}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="py-4 text-sm text-slate-600">
+                            <TableCell className="py-4 text-sm text-muted-foreground">
                               {formatDuration(sessionItem.serverAcceptedTotalActiveSeconds)}
                             </TableCell>
-                            <TableCell className="px-6 py-4 text-right font-semibold text-slate-900">
+                            <TableCell className="px-6 py-4 text-right font-medium text-foreground">
                               {formatCredits(sessionItem.finalConsumedCredits)}
                             </TableCell>
                           </TableRow>
@@ -552,12 +619,14 @@ export default async function ProfilePage() {
                     </TableBody>
                   </Table>
                 ) : (
-                  <div className="flex min-h-[320px] flex-col items-center justify-center px-6 py-14 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                      <Clock3 className="h-6 w-6" />
+                  <div className="flex min-h-[240px] flex-col items-center justify-center px-6 py-12 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <Clock3 className="h-5 w-5" />
                     </div>
-                    <p className="mt-6 text-2xl font-medium text-slate-950">暂无使用记录</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">所选时间段内无使用记录</p>
+                    <p className="mt-4 text-lg font-medium text-foreground">暂无使用记录</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      所选时间段内无使用记录
+                    </p>
                   </div>
                 )}
               </CardContent>

@@ -19,22 +19,18 @@ export function ProfileSettingsSection({
   children,
 }: ProfileSettingsSectionProps) {
   return (
-    <section
-      id={id}
-      className={cn(
-        'scroll-mt-24 rounded-[30px] border border-white/80 bg-white/92 p-6 shadow-[0_28px_70px_-48px_rgba(15,23,42,0.2)] sm:p-7',
-        className
-      )}
-    >
-      <div>
+    <section id={id} className={cn('scroll-mt-24', className)}>
+      <div className="space-y-1">
         {eyebrow ? (
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{eyebrow}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
+            {eyebrow}
+          </p>
         ) : null}
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">{title}</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500">{description}</p>
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">{title}</h2>
+        <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
-      <Separator className="my-5 bg-slate-200/80" />
-      <div className="space-y-5">{children}</div>
+      <Separator className="my-4" />
+      <div className="space-y-4">{children}</div>
     </section>
   )
 }
