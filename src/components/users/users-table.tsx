@@ -203,30 +203,19 @@ export function UsersTable({
   ]
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div className="space-y-0.5">
-            <CardTitle className="text-lg">账号列表</CardTitle>
-            <CardDescription>管理用户邮箱、手机号及归属组织</CardDescription>
-          </div>
-          <UserFormDialog organizations={organizations} onSuccess={onRefresh} />
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            columns={columns}
-            data={users}
-            searchKey="name"
-            searchPlaceholder="搜索姓名..."
-            pageCount={pagination.pageCount}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={onPageChange}
-            onPageSizeChange={onPageSizeChange}
-            totalCount={pagination.total}
-          />
-        </CardContent>
-      </Card>
+    <div className="flex flex-1 flex-col gap-4">
+      <DataTable
+        columns={columns}
+        data={users}
+        searchKey="name"
+        searchPlaceholder="搜索姓名..."
+        pageCount={pagination.pageCount}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+        totalCount={pagination.total}
+      />
       
       <UserEditDialog
         user={editingUser}

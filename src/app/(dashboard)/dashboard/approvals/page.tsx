@@ -3,17 +3,10 @@ import { redirect } from 'next/navigation'
 import type { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ApproveButton } from './approve-button'
-import { RejectButton } from './reject-button'
-import { RevokeButton } from './revoke-button'
-import { Box, CheckCircle2, Clock, Cpu, History, ShieldCheck, XCircle } from 'lucide-react'
 import { getOrganizationScopeIds } from '@/lib/organizations'
-import { AdminPageHeader } from '@/components/layout/admin-page-header'
-import { AdminStatCard } from '@/components/layout/admin-stat-card'
 import { Main } from '@/components/layout/main'
-import { cn } from '@/lib/utils'
+import { Clock, CheckCircle2, XCircle, History } from 'lucide-react'
+import { ApprovalsClient } from './ApprovalsClient'
 
 type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'revoked'
 type ResourceType = 'skill' | 'mcp'
@@ -314,147 +307,34 @@ export default async function ApprovalsPage({
 
   const totalHistory = counts.approved + counts.rejected + counts.revoked
 
+  const initialApplications = applications.map((app) => {
+    const timeline = getTimelineLabel(app)
+    return {
+      id: app.id,
+      resourceType: app.resourceType,
+      resourceName: app.resource?.name ?? null,
+      resourceIdentifier: app.resource?.identifier ?? null,
+      resourceVisibility: app.resource?.visibility ?? null,
+      userName: app.user.name,
+      userEmail: app.user.email,
+      userOrgName: app.user.organization?.name ?? null,
+      resourceOrgName: app.resource?.organization?.name ?? null,
+      status: app.status,
+      createdAt: app.createdAt.toISOString(),
+      updatedAt: app.updatedAt.toISOString(),
+      timelineLabel: timeline.label,
+      timelineValue: timeline.value,
+      isRevocable: app.status === 'approved' && !app.grant?.revokedAt,
+    }
+  })
+
   return (
-    <Main className="space-y-4">
-      <AdminPageHeader
-        title="审核管理"
-        description="统一审核 Skill 和 MCP 申请事项，归并处理授权流转。"
+    <Main className="flex flex-col min-h-[calc(100vh-theme(spacing.16))]">
+      <ApprovalsClient
+        initialApplications={initialApplications}
+        counts={counts}
+        selectedStatus={selectedStatus}
       />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminStatCard label="待审核" value={counts.pending} icon={Clock} hint="待处理申请" />
-        <AdminStatCard label="已通过" value={counts.approved} icon={CheckCircle2} hint="完成授权创建" />
-        <AdminStatCard label="已拒绝" value={counts.rejected} icon={XCircle} hint="历史拒绝记录" />
-        <AdminStatCard label="历史合计" value={totalHistory} icon={History} hint="已归档事项" />
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {statusOptions.map((option) => {
-          const isActive = option.key === selectedStatus
-          const count = counts[option.key]
-          return (
-            <Link
-              key={option.key}
-              href={`/dashboard/approvals?status=${option.key}`}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-background text-muted-foreground hover:bg-muted'
-              )}
-            >
-              <option.Icon className="h-4 w-4" />
-              <span>{option.label}</span>
-              <span className={cn('text-xs', isActive ? 'text-primary-foreground/70' : 'text-muted-foreground/50')}>{count}</span>
-            </Link>
-          )
-        })}
-      </div>
-
-      {applications.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <currentOption.Icon className="mb-4 h-12 w-12 text-muted-foreground/30" />
-            <p className="text-base font-medium">{currentOption.emptyTitle}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{currentOption.emptyDescription}</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {applications.map((application) => {
-            const ResourceIcon = application.resourceType === 'skill' ? Box : Cpu
-            const timeline = getTimelineLabel(application)
-            const meta = statusMeta[application.status]
-            const isPending = application.status === 'pending'
-
-            return (
-              <Card key={application.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="flex min-w-0 flex-1 items-start gap-4">
-                      <div className="shrink-0 rounded-lg bg-muted p-2.5">
-                        <ResourceIcon className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <h3 className="truncate text-lg font-bold tracking-tight">
-                            {application.resource?.name || '资源已删除'}
-                          </h3>
-                          <Badge variant={application.resourceType === 'skill' ? 'outline' : 'secondary'}>
-                            {application.resourceType === 'skill' ? 'Skill' : 'MCP'}
-                          </Badge>
-                          <Badge variant={meta.badgeVariant}>{meta.label}</Badge>
-                          {application.resource?.visibility && (
-                            <Badge variant="outline">
-                              {visibilityLabelMap[application.resource.visibility] || application.resource.visibility}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="truncate text-sm text-muted-foreground font-mono bg-muted/30 w-fit px-1.5 rounded">
-                          {application.resource?.identifier || '标识不可用'}
-                        </p>
-                      </div>
-                    </div>
-                    {isPending ? (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <ApproveButton applicationId={application.id} />
-                        <RejectButton applicationId={application.id} />
-                      </div>
-                    ) : application.status === 'approved' && !application.grant?.revokedAt ? (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <RevokeButton applicationId={application.id} />
-                      </div>
-                    ) : (
-                      <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                        <History className="h-3.5 w-3.5" />
-                        已归档
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-6 text-sm sm:grid-cols-2 xl:grid-cols-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">申请人</p>
-                      <p className="mt-1.5 font-medium">
-                        {application.user.name || application.user.email}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{application.user.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">所属部门</p>
-                      <p className="mt-1.5 font-medium">
-                        {application.user.organization?.name || '未分配'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">资源管理归属</p>
-                      <p className="mt-1.5 font-medium">
-                        {application.resource?.organization?.name || '公共 / 个人'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{timeline.label}</p>
-                      <p className="mt-1.5 font-medium">{timeline.value}</p>
-                    </div>
-                  </div>
-
-                  {application.status === 'approved' && (
-                    <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
-                      <ShieldCheck className="h-4 w-4" />
-                      <span className="font-medium">
-                        {application.grant?.revokedAt
-                          ? '授权已被撤销。'
-                          : '审核通过，已成功创建对应授权。'}
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
     </Main>
   )
 }

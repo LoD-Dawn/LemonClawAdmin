@@ -11,8 +11,6 @@ import {
 } from '@/lib/admin-access'
 import { sanitizeManagementModelProviders } from '@/lib/model-provider-presenter'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
-import { AdminStatCard } from '@/components/layout/admin-stat-card'
-import { Bot, CheckCircle2, Eye } from 'lucide-react'
 import { Main } from '@/components/layout/main'
 
 export default async function ModelsPage() {
@@ -62,33 +60,8 @@ export default async function ModelsPage() {
     }),
   })))
 
-  const pageTitle = managementMode === 'super_admin'
-    ? '模型管理'
-    : managementMode === 'department_admin'
-    ? '部门模型'
-    : '我的模型'
-  const pageDescription = managementMode === 'super_admin'
-    ? '统一维护模型提供商、默认模型和客户端分层。'
-    : managementMode === 'department_admin'
-    ? '维护部门范围内的模型配置与提供商。'
-    : '维护你自己的个人模型提供商配置。'
-  const ownershipLabel = managementMode === 'super_admin'
-    ? '全局配置池'
-    : managementMode === 'department_admin'
-    ? '部门范围'
-    : '个人可见'
-
   return (
-    <Main className="space-y-4">
-      <AdminPageHeader
-        title={pageTitle}
-        description={pageDescription}
-      />
-      <div className="grid gap-4 md:grid-cols-3">
-        <AdminStatCard label="提供商总量" value={total} icon={Bot} hint="已启用配置" />
-        <AdminStatCard label="可用模型" value={enabledCount} icon={CheckCircle2} hint="客户端当前可选" />
-        <AdminStatCard label="管理视角" value={ownershipLabel} icon={Eye} hint="依据角色调整" />
-      </div>
+    <Main className="flex flex-col min-h-[calc(100vh-theme(spacing.16))]">
       <ModelsClient
         initialProviders={typedProviders}
         initialOrganizations={organizations}

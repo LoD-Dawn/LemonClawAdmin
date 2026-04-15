@@ -123,21 +123,7 @@ export function SkillTagsTable({
   )
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">标签列表</h2>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditingTag(null)
-            setOpen(true)
-          }}
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          新建标签
-        </Button>
-      </div>
-
+    <div className="flex flex-1 flex-col gap-4">
       <DataTable
         columns={columns}
         data={tags}

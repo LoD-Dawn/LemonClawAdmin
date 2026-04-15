@@ -40,15 +40,15 @@ export function Header({ user }: HeaderProps) {
       )}
     >
       <div className='flex items-center gap-3 sm:gap-4'>
-        <SidebarTrigger variant='outline' className='h-8 w-8' />
-        <Separator orientation='vertical' className='h-6 opacity-30' />
+        <SidebarTrigger variant='outline' className='h-9 w-9 rounded-lg' />
+        <Separator orientation='vertical' className='h-6 mx-1' />
         <Search />
       </div>
 
       <div className='flex items-center gap-2'>
         <ThemeSwitch />
         <Button variant='ghost' size='icon' className='h-9 w-9 rounded-full'>
-          <Settings className='h-[1.2rem] w-[1.2rem]' />
+          <Settings className='h-4 w-4' />
         </Button>
         <ProfileDropdown user={user} />
       </div>

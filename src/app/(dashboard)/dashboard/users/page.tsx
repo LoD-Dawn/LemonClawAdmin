@@ -4,8 +4,6 @@ import { db } from '@/lib/db'
 import { fetchAdminUsersPage } from '@/lib/admin-user-quota'
 import { UsersClient } from './UsersClient'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
-import { AdminStatCard } from '@/components/layout/admin-stat-card'
-import { ShieldCheck, Users, Building2 } from 'lucide-react'
 import { Main } from '@/components/layout/main'
 
 export default async function UsersPage() {
@@ -27,16 +25,7 @@ export default async function UsersPage() {
   ])
 
   return (
-    <Main className="space-y-4">
-      <AdminPageHeader
-        title="用户管理"
-        description="统一维护账号、组织归属与管理角色，让权限边界更清晰。"
-      />
-      <div className="grid gap-4 md:grid-cols-3">
-        <AdminStatCard label="活跃账号" value={activeCount} icon={Users} hint="当前已启用用户数" />
-        <AdminStatCard label="组织节点" value={organizations.length} icon={Building2} hint="可分配的组织范围" />
-        <AdminStatCard label="管理重点" value="角色与归属" icon={ShieldCheck} hint="控制后台访问边界" />
-      </div>
+    <Main className="flex flex-col min-h-[calc(100vh-theme(spacing.16))]">
       <UsersClient
         initialUsers={userPage.data}
         initialOrganizations={organizations}

@@ -10,8 +10,6 @@ import {
   resolveAdminAccessScope,
 } from '@/lib/admin-access'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
-import { AdminStatCard } from '@/components/layout/admin-stat-card'
-import { Box, Building2, Eye } from 'lucide-react'
 import { Main } from '@/components/layout/main'
 
 export default async function SkillsPage() {
@@ -56,33 +54,8 @@ export default async function SkillsPage() {
     }),
   }))
 
-  const pageTitle = managementMode === 'super_admin'
-    ? 'Skills'
-    : managementMode === 'department_admin'
-    ? '部门 Skills'
-    : '我的 Skills'
-  const pageDescription = managementMode === 'super_admin'
-    ? '集中维护全局 Skill 资产，确保标识符与可见范围一致。'
-    : managementMode === 'department_admin'
-    ? '查看并维护部门范围内的 Skill 资产。'
-    : '浏览你可访问的 Skill 资源汇总。'
-  const ownershipLabel = managementMode === 'super_admin'
-    ? '全局资产池'
-    : managementMode === 'department_admin'
-    ? '部门范围'
-    : '个人可见'
-
   return (
-    <Main className="space-y-4">
-      <AdminPageHeader
-        title={pageTitle}
-        description={pageDescription}
-      />
-      <div className="grid gap-4 md:grid-cols-3">
-        <AdminStatCard label="当前总量" value={total} icon={Box} hint="已启用 Skill 数量" />
-        <AdminStatCard label="组织范围" value={organizations.length} icon={Building2} hint="可见组织数" />
-        <AdminStatCard label="管理视角" value={ownershipLabel} icon={Eye} hint="依据角色调整" />
-      </div>
+    <Main className="flex flex-col min-h-[calc(100vh-theme(spacing.16))]">
       <SkillsClient
         initialSkills={typedSkills}
         initialOrganizations={organizations}

@@ -1,9 +1,7 @@
 import { redirect } from 'next/navigation'
-import { Tags, Languages, ToggleRight } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
-import { AdminStatCard } from '@/components/layout/admin-stat-card'
 import { SkillTagsClient } from './SkillTagsClient'
 import { Main } from '@/components/layout/main'
 
@@ -25,16 +23,7 @@ export default async function SkillTagsPage() {
   const activeCount = tags.filter((tag) => tag.isActive).length
 
   return (
-    <Main className="space-y-4">
-      <AdminPageHeader
-        title="标签管理"
-        description="集中维护 Skill 标签字典，确保全站标签命名一致与双语映射。"
-      />
-      <div className="grid gap-4 md:grid-cols-3">
-        <AdminStatCard label="标签总数" value={tags.length} icon={Tags} hint="当前字典条目数" />
-        <AdminStatCard label="启用标签" value={activeCount} icon={ToggleRight} hint="可供 Skill 选择" />
-        <AdminStatCard label="双语字段" value="EN / 中文" icon={Languages} hint="前后台命名一致" />
-      </div>
+    <Main className="flex flex-col min-h-[calc(100vh-theme(spacing.16))]">
       <SkillTagsClient initialTags={tags} />
     </Main>
   )

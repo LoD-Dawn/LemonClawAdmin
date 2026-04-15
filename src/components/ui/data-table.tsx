@@ -233,7 +233,7 @@ export function DataTable<TData, TValue>({
           <div className="flex items-center space-x-2">
             <p className="text-sm font-medium">每页显示</p>
             <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
-              <SelectTrigger className="h-8 w-[70px]">
+              <SelectTrigger className="h-9 w-[70px]">
                 <SelectValue placeholder={pageSize} />
               </SelectTrigger>
               <SelectContent side="top">

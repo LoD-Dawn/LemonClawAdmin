@@ -1,11 +1,9 @@
 import { redirect } from 'next/navigation'
 import type { Prisma } from '@prisma/client'
-import { History, FileClock, Users, ShieldCheck } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { parseOperationLogMetadata } from '@/lib/operation-log'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
-import { AdminStatCard } from '@/components/layout/admin-stat-card'
 import { OperationLogsClient } from './OperationLogsClient'
 import { Main } from '@/components/layout/main'
 
@@ -90,17 +88,7 @@ export default async function OperationLogsPage({
   ])
 
   return (
-    <Main className="space-y-4">
-      <AdminPageHeader
-        title="操作日志"
-        description="集中查看全局关键操作记录，用于复盘与审计。"
-      />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminStatCard label="日志总量" value={total} icon={History} hint="总记录条数" />
-        <AdminStatCard label="24h 新增" value={todayCount} icon={FileClock} hint="最近一天产生" />
-        <AdminStatCard label="7d 活跃账号" value={recentActors.length} icon={Users} hint="执行过操作的账号" />
-        <AdminStatCard label="涉及模块" value={moduleCount.length} icon={ShieldCheck} hint="管理域覆盖数" />
-      </div>
+    <Main className="flex flex-col min-h-[calc(100vh-theme(spacing.16))]">
       <OperationLogsClient
         initialLogs={logs.map((log) => ({
           ...log,
