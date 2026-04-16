@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -315,9 +314,7 @@ export default async function ProfilePage() {
         <div className="min-w-0 flex-1 space-y-10">
           <ProfileSettingsSection
             id="overview"
-            eyebrow="Overview"
             title="额度与套餐总览"
-            description="这一部分集中展示套餐身份、额度进度和关键使用统计。"
           >
             <Card>
               <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -329,9 +326,6 @@ export default async function ProfilePage() {
                       {tierMeta.note}
                     </Badge>
                   </div>
-                  <CardDescription className="max-w-2xl leading-6">
-                    {tierMeta.description}
-                  </CardDescription>
                 </div>
                 <Badge variant="outline" className="w-fit">
                   {quotaNote}
@@ -419,9 +413,7 @@ export default async function ProfilePage() {
 
           <ProfileSettingsSection
             id="account"
-            eyebrow="Account"
             title="登录与联系信息"
-            description="参考 settings 的 account/profile 分区，把登录方式和联系资料集中展示。"
           >
             <div className="flex flex-wrap gap-2">
               <Badge
@@ -438,11 +430,10 @@ export default async function ProfilePage() {
               </Badge>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">基本资料</CardTitle>
-                  <CardDescription>当前账号的主要识别信息与联系字段。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                   <DetailItem label="姓名" value={user.name ?? '未设置'} />
@@ -454,39 +445,17 @@ export default async function ProfilePage() {
                   />
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">登录说明</CardTitle>
-                  <CardDescription>当前账号在普通入口或企业入口下的使用规则。</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-                  <p>
-                    {user.accountType === 'enterprise'
-                      ? '企业成员通过企业入口登录，访问范围由组织、部门和具体授权共同决定。'
-                      : '普通用户默认走手机号验证流程，手机号会作为后续登录和安全校验的基础信息。'}
-                  </p>
-                  <p>
-                    {needsPhoneBinding
-                      ? '当前账号还需要先完成手机号绑定，绑定成功后工作台限制会自动解除。'
-                      : '当前账号已经满足登录校验要求，可以正常继续使用个人工作台。'}
-                  </p>
-                </CardContent>
-              </Card>
             </div>
           </ProfileSettingsSection>
 
           <ProfileSettingsSection
             id="organization"
-            eyebrow="Organization"
             title="组织与身份归属"
-            description="展示账号归属、管理权限与当前访问范围，便于判断资源可见性和审批路径。"
           >
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid gap-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">组织信息</CardTitle>
-                  <CardDescription>当前账号的组织归属和权限级别。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                   <DetailItem label="账号类型" value={user.accountType === 'enterprise' ? '企业成员' : '普通用户'} />
@@ -506,33 +475,12 @@ export default async function ProfilePage() {
                   <DetailItem label="用户 ID" value={user.id} />
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">访问说明</CardTitle>
-                  <CardDescription>按当前身份解释资源可见性与额度规则。</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-                  <p>
-                    {isUnlimited
-                      ? '当前账号拥有管理级权限，平台会记录会话和消耗，但不会按普通积分额度限制访问。'
-                      : user.accountType === 'enterprise'
-                        ? '企业成员可见资源受组织、部门和资源授权共同控制。'
-                        : '普通用户默认进入个人工作台，资源访问以个人额度和已获授权为准。'}
-                  </p>
-                  <p>
-                    部门级资源通常需要审批或授权后才可调用，个人级资源仅所有者可见，组织级资源会在组织树内共享。
-                  </p>
-                </CardContent>
-              </Card>
             </div>
           </ProfileSettingsSection>
 
           <ProfileSettingsSection
             id="security"
-            eyebrow="Security"
             title="手机号绑定与安全校验"
-            description="保留现有手机号绑定能力，但以标准设置卡片方式接入，不再使用独立的大型视觉模块。"
           >
             {needsPhoneBinding ? (
               <PhoneBindingCard initialPhone={user.phone} required={session.user.requiresPhoneBinding} />
@@ -540,7 +488,6 @@ export default async function ProfilePage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">校验通过</CardTitle>
-                  <CardDescription>当前账号已经满足普通用户入口所需的手机号校验条件。</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                   <DetailItem label="已绑定号码" value={user.phone ?? '未绑定'} />
@@ -552,15 +499,12 @@ export default async function ProfilePage() {
 
           <ProfileSettingsSection
             id="usage"
-            eyebrow="Usage"
             title="最近调用记录"
-            description="延续现有调用明细，但用更接近后台 settings 的内容区样式来展示。"
           >
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div className="space-y-1">
                   <CardTitle className="text-base">最近 8 条已结束会话</CardTitle>
-                  <CardDescription>包含模型、时长和最终消耗积分。</CardDescription>
                 </div>
                 <Badge variant="outline">最近更新</Badge>
               </CardHeader>

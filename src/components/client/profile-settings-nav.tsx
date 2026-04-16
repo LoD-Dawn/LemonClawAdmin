@@ -16,31 +16,26 @@ const items = [
   {
     id: 'overview',
     title: '总览',
-    description: '额度、套餐与使用情况',
     icon: UserRound,
   },
   {
     id: 'account',
     title: '账号资料',
-    description: '邮箱、手机号与登录方式',
     icon: BadgeCheck,
   },
   {
     id: 'organization',
     title: '组织身份',
-    description: '组织归属与权限范围',
     icon: BriefcaseBusiness,
   },
   {
     id: 'security',
     title: '安全验证',
-    description: '手机号绑定与校验状态',
     icon: Shield,
   },
   {
     id: 'usage',
     title: '调用记录',
-    description: '最近结束会话与消耗',
     icon: Activity,
   },
 ] as const
@@ -150,9 +145,6 @@ export function ProfileSettingsNav() {
                 <Icon className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="min-w-0">
                   <div className="font-medium">{item.title}</div>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {item.description}
-                  </p>
                 </div>
               </div>
             </button>

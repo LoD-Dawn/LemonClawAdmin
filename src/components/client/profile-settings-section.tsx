@@ -4,7 +4,7 @@ import { Separator } from '@/components/ui/separator'
 interface ProfileSettingsSectionProps {
   id: string
   title: string
-  description: string
+  description?: string
   eyebrow?: string
   className?: string
   children: React.ReactNode
@@ -27,7 +27,9 @@ export function ProfileSettingsSection({
           </p>
         ) : null}
         <h2 className="text-xl font-semibold tracking-tight text-foreground">{title}</h2>
-        <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+        {description ? (
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       <Separator className="my-4" />
       <div className="space-y-4">{children}</div>
