@@ -549,23 +549,24 @@ export default async function DashboardPage() {
 
   return (
     <Main className='relative space-y-6 overflow-hidden pb-10'>
-      <div className='pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_right,hsl(var(--foreground)/0.08),transparent_44%)]' />
-      <div className='pointer-events-none absolute left-[-6rem] top-28 h-40 w-40 rounded-full bg-[radial-gradient(circle,hsl(var(--foreground)/0.05),transparent_68%)] blur-3xl' />
-
-      <AdminPageHeader
-        title='Dashboard'
-        description={roleDescription}
-        meta={<Badge variant='secondary' className='rounded-full px-3 py-1'>{getModeLabel(mode)}</Badge>}
-        actions={<Button asChild size='sm' className='rounded-xl px-4'><Link href='/dashboard/operation-logs'><Download className='mr-2 h-4 w-4' />查看审计</Link></Button>}
-      />
+      <section className='relative overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_top_right,hsl(var(--foreground)/0.08),transparent_40%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))] py-7 pl-0 pr-6 sm:pr-8'>
+        <div className='pointer-events-none absolute left-[-4rem] top-1/2 h-32 w-32 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(var(--foreground)/0.05),transparent_68%)] blur-3xl' />
+        <AdminPageHeader
+          className='relative z-10'
+          title='概览'
+          description={roleDescription}
+          meta={<Badge variant='secondary' className='rounded-full px-3 py-1'>{getModeLabel(mode)}</Badge>}
+          actions={<Button asChild size='sm' className='rounded-xl px-4'><Link href='/dashboard/operation-logs'><Download className='mr-2 h-4 w-4' />查看审计</Link></Button>}
+        />
+      </section>
 
       <Tabs defaultValue='overview' className='space-y-5'>
         <div className='overflow-x-auto pb-2'>
           <TabsList className='rounded-xl border border-border/60 bg-background/80 p-1 shadow-sm'>
-            <TabsTrigger value='overview' className='rounded-lg'>Overview</TabsTrigger>
-            <TabsTrigger value='analytics' className='rounded-lg'>Analytics</TabsTrigger>
-            <TabsTrigger value='reports' disabled className='rounded-lg'>Reports</TabsTrigger>
-            <TabsTrigger value='notifications' disabled className='rounded-lg'>Notifications</TabsTrigger>
+            <TabsTrigger value='overview' className='rounded-lg'>总览</TabsTrigger>
+            <TabsTrigger value='analytics' className='rounded-lg'>分析</TabsTrigger>
+            <TabsTrigger value='reports' disabled className='rounded-lg'>报表</TabsTrigger>
+            <TabsTrigger value='notifications' disabled className='rounded-lg'>通知</TabsTrigger>
           </TabsList>
         </div>
 
