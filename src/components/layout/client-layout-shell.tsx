@@ -31,7 +31,7 @@ export function ClientLayoutShell({ children, user }: ClientLayoutShellProps) {
     <div className="min-h-screen bg-slate-50/60 transition-colors duration-500">
       <ClientHeader user={user} />
       <div className="h-[calc(100vh-64px)] overflow-hidden">
-        <main id="client-workspace" className="h-full overflow-y-auto">
+        <main id="client-workspace" className="h-full overflow-y-auto bg-white">
           <div className="mx-auto max-w-7xl px-4 lg:px-8 py-8">
             <div className="flex flex-col lg:flex-row gap-8">
               <div className="lg:sticky lg:top-0 h-fit">

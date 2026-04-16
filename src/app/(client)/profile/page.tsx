@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { auth, signOut } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { cn } from '@/lib/utils'
 import {
@@ -322,7 +322,7 @@ export default async function ProfilePage() {
       <div className="space-y-6 px-4 sm:px-0">
         <Card
           id="overview"
-          className="overflow-hidden border border-slate-200/50 bg-white shadow-none"
+          className="overflow-hidden border border-slate-200 bg-white shadow-none"
         >
           <CardContent className="p-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -361,8 +361,12 @@ export default async function ProfilePage() {
 
                 <div className="h-6 w-px bg-slate-100 hidden sm:block" />
 
-                <form action="/api/auth/signout" method="POST">
-                  <input type="hidden" name="callbackUrl" value="/login" />
+                <form
+                  action={async () => {
+                    'use server'
+                    await signOut({ redirectTo: '/login' })
+                  }}
+                >
                   <Button
                     type="submit"
                     variant="outline"
@@ -487,8 +491,8 @@ export default async function ProfilePage() {
           </Card>
 
           <div className="space-y-6">
-            <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-              <CardHeader className="border-b border-slate-50 p-6">
+            <Card className="flex-1 border-slate-200 bg-white shadow-none">
+              <CardHeader className="border-b border-slate-200 p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white leading-none">
                     <span className="text-xs font-bold select-none">ID</span>
@@ -508,7 +512,7 @@ export default async function ProfilePage() {
                   <DetailRow label="创建时间" value={formatDateTime(user.createdAt)} />
                 </div>
 
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4 border border-slate-200">
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-none transition-all hover:bg-slate-50">
                   <span className="text-[11px] font-bold uppercase text-slate-500">安全验证</span>
                   <div
                     className={cn(
@@ -534,7 +538,7 @@ export default async function ProfilePage() {
           id="usage"
           className="overflow-hidden border border-slate-200 bg-white shadow-sm"
         >
-          <CardHeader className="flex flex-col gap-4 border-b border-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <CardHeader className="flex flex-col gap-4 border-b border-slate-200 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white leading-none">
                 <History className="h-5 w-5 fill-current" />
@@ -550,7 +554,7 @@ export default async function ProfilePage() {
 
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-slate-50/50">
+              <TableHeader className="bg-slate-50">
                 <TableRow className="border-slate-200 hover:bg-transparent">
                   <TableHead className="h-10 px-6 text-[10px] font-bold uppercase tracking-widest text-slate-600">
                     会话详情
