@@ -25,13 +25,13 @@
   --input: 240 5.9% 90%;
   --ring: 240 5.9% 10%;
   --radius: 0.625rem;
-  --sidebar-background: 0 0% 98%;
-  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 224 39% 13%;
   --sidebar-primary: 240 5.9% 10%;
   --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 240 4.8% 95.9%;
-  --sidebar-accent-foreground: 240 5.9% 10%;
-  --sidebar-border: 220 13% 91%;
+  --sidebar-accent: 220 40% 96%;
+  --sidebar-accent-foreground: 224 39% 13%;
+  --sidebar-border: 220 23% 92%;
   --sidebar-ring: 217.2 91.2% 59.8%;
   --chart-1: 12 76% 61%;
   --chart-2: 173 58% 39%;
@@ -60,13 +60,13 @@
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
   --ring: 240 4.9% 83.9%;
-  --sidebar-background: 240 5.9% 10%;
-  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 224 39% 13%;
   --sidebar-primary: 224.3 76.3% 48%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 3.7% 15.9%;
-  --sidebar-accent-foreground: 240 4.8% 95.9%;
-  --sidebar-border: 240 3.7% 15.9%;
+  --sidebar-accent: 220 40% 96%;
+  --sidebar-accent-foreground: 224 39% 13%;
+  --sidebar-border: 220 23% 92%;
   --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
@@ -208,6 +208,73 @@
   box-shadow: 0 4px 6px -1px hsl(var(--foreground) / 0.05);
 }
 
+.login-terminal {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(33, 35, 44, 0.74), rgba(30, 32, 41, 0.92));
+  border-radius: 1.5rem;
+  box-shadow: 0 38px 80px -46px rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(10px);
+  min-height: 15rem;
+}
+
+.login-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.login-terminal-body {
+  padding: 1.35rem;
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 1.05rem;
+  line-height: 2;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.login-terminal-line {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.8rem;
+  white-space: nowrap;
+}
+
+.login-terminal-prompt {
+  color: rgba(248, 113, 113, 0.95);
+}
+
+.login-terminal-typing {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  border-right: 1px solid rgba(255, 255, 255, 0.9);
+  animation: loginTerminalTyping 4.8s steps(23, end) infinite, loginTerminalCursor 900ms step-end infinite;
+}
+
+.login-terminal-output {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
+.login-terminal-output-1 {
+  animation: loginTerminalFade 4.8s infinite;
+  animation-delay: 1.2s;
+}
+
+.login-terminal-output-2 {
+  animation: loginTerminalFade 4.8s infinite;
+  animation-delay: 2.4s;
+}
+
+.login-terminal-output-3 {
+  animation: loginTerminalFade 4.8s infinite;
+  animation-delay: 3.3s;
+}
+
 /* ──────────── Collapsible animation ──────────── */
 .CollapsibleContent {
   overflow: hidden;
@@ -227,6 +294,48 @@
 @keyframes slideUp {
   from { height: var(--radix-collapsible-content-height); }
   to { height: 0; }
+}
+
+@keyframes loginTerminalTyping {
+  0%,
+  8% {
+    width: 0;
+  }
+  40%,
+  78% {
+    width: var(--terminal-width, 22ch);
+  }
+  100% {
+    width: var(--terminal-width, 22ch);
+  }
+}
+
+@keyframes loginTerminalCursor {
+  0%,
+  50% {
+    border-color: rgba(255, 255, 255, 0.88);
+  }
+  50.01%,
+  100% {
+    border-color: transparent;
+  }
+}
+
+@keyframes loginTerminalFade {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  18%,
+  84% {
+    opacity: 0.86;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
 }
 
 /* ──────────── Utility: faded bottom ──────────── */

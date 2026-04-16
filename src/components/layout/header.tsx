@@ -1,9 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { ProfileDropdown } from './profile-dropdown'
 import { Search } from './search'
 import { ThemeSwitch } from './theme-switch'
@@ -35,21 +33,18 @@ export function Header({ user }: HeaderProps) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-shadow duration-300',
+        'sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-shadow duration-300 sm:px-4',
         offset > 10 && 'shadow-sm border-b border-sidebar-border/50'
       )}
     >
-      <div className='flex items-center gap-3 sm:gap-4'>
-        <SidebarTrigger variant='outline' className='h-9 w-9 rounded-lg' />
-        <Separator orientation='vertical' className='h-6 mx-1' />
+      <div className='flex items-center gap-2.5 sm:gap-3'>
+        <SidebarTrigger variant='outline' className='h-8 w-8 rounded-md' />
+        <Separator orientation='vertical' className='mx-0.5 h-5' />
         <Search />
       </div>
 
       <div className='flex items-center gap-2'>
         <ThemeSwitch />
-        <Button variant='ghost' size='icon' className='h-9 w-9 rounded-full'>
-          <Settings className='h-4 w-4' />
-        </Button>
         <ProfileDropdown user={user} />
       </div>
     </header>

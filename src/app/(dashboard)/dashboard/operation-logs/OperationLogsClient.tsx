@@ -1,21 +1,12 @@
 'use client'
 
-import type { FormEvent, ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination'
 import {
   Select,
   SelectContent,
@@ -25,8 +16,9 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search } from 'lucide-react'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
+import { getPageNumbers } from '@/lib/utils'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react'
 
 type OperationLogRow = {
   id: string
@@ -93,88 +85,6 @@ function formatDate(value: string | Date) {
     minute: '2-digit',
     second: '2-digit',
   })
-}
-
-function renderPageNumbers(page: number, pageCount: number, onPageChange: (nextPage: number) => void) {
-  const items: ReactNode[] = []
-
-  if (pageCount <= 7) {
-    for (let i = 1; i <= pageCount; i += 1) {
-      items.push(
-        <PaginationItem key={i}>
-          <PaginationLink
-            href="#"
-            onClick={(event) => {
-              event.preventDefault()
-              onPageChange(i)
-            }}
-            isActive={i === page}
-          >
-            {i}
-          </PaginationLink>
-        </PaginationItem>
-      )
-    }
-
-    return items
-  }
-
-  items.push(
-    <PaginationItem key={1}>
-      <PaginationLink
-        href="#"
-        onClick={(event) => {
-          event.preventDefault()
-          onPageChange(1)
-        }}
-        isActive={page === 1}
-      >
-        1
-      </PaginationLink>
-    </PaginationItem>
-  )
-
-  if (page > 3) {
-    items.push(<PaginationEllipsis key="start-ellipsis" />)
-  }
-
-  for (let i = Math.max(2, page - 1); i <= Math.min(pageCount - 1, page + 1); i += 1) {
-    items.push(
-      <PaginationItem key={i}>
-        <PaginationLink
-          href="#"
-          onClick={(event) => {
-            event.preventDefault()
-            onPageChange(i)
-          }}
-          isActive={i === page}
-        >
-          {i}
-        </PaginationLink>
-      </PaginationItem>
-    )
-  }
-
-  if (page < pageCount - 2) {
-    items.push(<PaginationEllipsis key="end-ellipsis" />)
-  }
-
-  items.push(
-    <PaginationItem key={pageCount}>
-      <PaginationLink
-        href="#"
-        onClick={(event) => {
-          event.preventDefault()
-          onPageChange(pageCount)
-        }}
-        isActive={page === pageCount}
-      >
-        {pageCount}
-      </PaginationLink>
-    </PaginationItem>
-  )
-
-  return items
 }
 
 export function OperationLogsClient({
@@ -285,7 +195,32 @@ export function OperationLogsClient({
 
   const visiblePageCount = Math.max(pagination.pageCount, 1)
   const hasLogs = logs.length > 0
-  const totalLabel = useMemo(() => `${pagination.total} 条记录`, [pagination.total])
+
+  const renderPageNumbers = () => {
+    return getPageNumbers(pagination.page, visiblePageCount).map((pageNumber, index) => {
+      if (pageNumber === '...') {
+        return (
+          <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted-foreground">
+            ...
+          </span>
+        )
+      }
+
+      return (
+        <Button
+          key={pageNumber}
+          type="button"
+          variant={pagination.page === pageNumber ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 min-w-8 px-2"
+          onClick={() => handlePageChange(pageNumber)}
+        >
+          <span className="sr-only">跳转到第 {pageNumber} 页</span>
+          {pageNumber}
+        </Button>
+      )
+    })
+  }
 
   if (isLoading && logs.length === 0) {
     return (
@@ -305,51 +240,53 @@ export function OperationLogsClient({
         description="追溯全站关键配置变更、登录会话与资源授权，确保审计链条完整。"
       />
 
-      <div className="rounded-lg border bg-card p-4 shadow-sm">
-        <form className="flex flex-col gap-4" onSubmit={handleFilterSubmit}>
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.8fr)_220px_220px_auto]">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="搜索账号、对象、动作"
-                className="pl-11 h-10"
-              />
-            </div>
-            <Select value={moduleDraft} onValueChange={setModuleDraft}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="全部模块" />
-              </SelectTrigger>
-              <SelectContent>
-                {moduleOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={targetTypeDraft} onValueChange={setTargetTypeDraft}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="全部对象" />
-              </SelectTrigger>
-              <SelectContent>
-                {targetTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="submit" className="h-10">应用筛选</Button>
+      <form className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" onSubmit={handleFilterSubmit}>
+        <div className="flex flex-1 items-center gap-2 min-w-[200px]">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="搜索账号、对象、动作"
+              className="h-8 pl-9"
+            />
           </div>
-        </form>
-      </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Select value={moduleDraft} onValueChange={setModuleDraft}>
+            <SelectTrigger className="h-8 w-full sm:w-[180px]">
+              <SelectValue placeholder="全部模块" />
+            </SelectTrigger>
+            <SelectContent>
+              {moduleOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={targetTypeDraft} onValueChange={setTargetTypeDraft}>
+            <SelectTrigger className="h-8 w-full sm:w-[180px]">
+              <SelectValue placeholder="全部对象" />
+            </SelectTrigger>
+            <SelectContent>
+              {targetTypeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="submit" variant="outline" size="sm" className="h-8">
+            应用筛选
+          </Button>
+        </div>
+      </form>
 
-      <div className="rounded-md border overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-background">
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent bg-muted/50">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="w-[180px]">最后操作时间</TableHead>
               <TableHead className="w-[200px]">操作账号</TableHead>
               <TableHead className="w-[180px]">模块 / 动作</TableHead>
@@ -370,27 +307,29 @@ export function OperationLogsClient({
                   <TableCell className="align-top py-4">
                     <div className="space-y-2">
                       <div className="flex">
-                        <Badge variant={log.actorType === 'user' ? 'default' : log.actorType === 'api_key' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1">
+                        <Badge variant={log.actorType === 'user' ? 'default' : log.actorType === 'api_key' ? 'secondary' : 'outline'} className="h-4 px-1 text-[10px]">
                           {log.actorType === 'user' ? '账号' : log.actorType === 'api_key' ? 'API Key' : '系统'}
                         </Badge>
                       </div>
                       <div>
-                        <div className="font-medium text-foreground text-sm">{log.actorName || log.actorEmail || '未知操作方'}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[180px]">{log.actorEmail || log.actorClientId || '-'}</div>
+                        <div className="text-sm font-medium text-foreground">{log.actorName || log.actorEmail || '未知操作方'}</div>
+                        <div className="max-w-[180px] truncate text-xs text-muted-foreground">{log.actorEmail || log.actorClientId || '-'}</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="align-top py-4">
                     <div className="space-y-2">
                       <div className="flex">
-                        <Badge variant="outline" className="text-[10px] h-4 px-1">{moduleOptions.find((option) => option.value === log.module)?.label || log.module}</Badge>
+                        <Badge variant="outline" className="h-4 px-1 text-[10px]">
+                          {moduleOptions.find((option) => option.value === log.module)?.label || log.module}
+                        </Badge>
                       </div>
-                      <div className="font-medium text-foreground text-sm">{log.action}</div>
+                      <div className="text-sm font-medium text-foreground">{log.action}</div>
                     </div>
                   </TableCell>
                   <TableCell className="align-top py-4">
                     <div className="space-y-1">
-                      <div className="font-medium text-foreground text-sm line-clamp-1">{log.targetName || log.targetId || '未命名对象'}</div>
+                      <div className="line-clamp-1 text-sm font-medium text-foreground">{log.targetName || log.targetId || '未命名对象'}</div>
                       <div className="text-xs text-muted-foreground">
                         {targetTypeOptions.find((option) => option.value === log.targetType)?.label || log.targetType}
                       </div>
@@ -398,8 +337,8 @@ export function OperationLogsClient({
                   </TableCell>
                   <TableCell className="align-top py-4">
                     <div className="space-y-1">
-                      <div className="text-sm text-foreground leading-relaxed">{log.summary || '无补充说明'}</div>
-                      {log.userAgent ? <div className="text-xs text-muted-foreground line-clamp-1 opacity-50 group-hover:opacity-100 transition-opacity">UA: {log.userAgent}</div> : null}
+                      <div className="text-sm leading-relaxed text-foreground">{log.summary || '无补充说明'}</div>
+                      {log.userAgent ? <div className="line-clamp-1 text-xs text-muted-foreground opacity-50 transition-opacity group-hover:opacity-100">UA: {log.userAgent}</div> : null}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -417,52 +356,74 @@ export function OperationLogsClient({
           </TableBody>
         </Table>
 
-        <div className="flex flex-col gap-4 border-t px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between bg-muted/20">
-          <div className="text-xs text-muted-foreground">
-            第 <span className="font-medium text-foreground">{pagination.page}</span> / {visiblePageCount} 页，共 {pagination.total} 条记录
+        <div className="flex flex-col gap-4 overflow-hidden px-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Select value={String(pageSize)} onValueChange={(value) => handlePageSizeChange(Number(value))}>
+              <SelectTrigger className="h-8 w-[72px]">
+                <SelectValue placeholder={pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 50, 100].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm font-medium">每页显示</p>
+            <span className="text-sm text-muted-foreground">共 {pagination.total} 条</span>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">每页显示</span>
-              <Select value={String(pageSize)} onValueChange={(value) => handlePageSizeChange(Number(value))}>
-                <SelectTrigger className="h-8 w-[76px] text-xs">
-                  <SelectValue placeholder={pageSize} />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[10, 20, 50, 100].map((size) => (
-                    <SelectItem key={size} value={String(size)} className="text-xs">
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6 lg:gap-8">
+            <div className="text-sm font-medium">
+              第 {pagination.page} / {visiblePageCount} 页
             </div>
-
-            <Pagination className="mx-0 w-auto justify-start">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      if (pagination.page > 1) handlePageChange(pagination.page - 1)
-                    }}
-                    className={pagination.page <= 1 ? 'pointer-events-none opacity-50 h-8 px-2' : 'h-8 px-2'}
-                  />
-                </PaginationItem>
-                {renderPageNumbers(pagination.page, visiblePageCount, handlePageChange)}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      if (pagination.page < visiblePageCount) handlePageChange(pagination.page + 1)
-                    }}
-                    className={pagination.page >= visiblePageCount ? 'pointer-events-none opacity-50 h-8 px-2' : 'h-8 px-2'}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden h-8 w-8 p-0 sm:flex"
+                onClick={() => handlePageChange(1)}
+                disabled={pagination.page <= 1}
+              >
+                <span className="sr-only">首页</span>
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+              >
+                <span className="sr-only">上一页</span>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {renderPageNumbers()}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page >= visiblePageCount}
+              >
+                <span className="sr-only">下一页</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden h-8 w-8 p-0 sm:flex"
+                onClick={() => handlePageChange(visiblePageCount)}
+                disabled={pagination.page >= visiblePageCount}
+              >
+                <span className="sr-only">末页</span>
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
