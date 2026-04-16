@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -15,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { buttonVariants } from '@/components/ui/button'
-import { Cpu, LogOut, ShieldCheck, UserRound } from 'lucide-react'
+import { LogOut, ShieldCheck, UserRound } from 'lucide-react'
 
 interface ClientSidebarProps {
   user: {
@@ -67,12 +68,12 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
         : '普通用户'
 
   return (
-    <aside className="w-full border-b bg-background lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r">
+    <aside className="w-full border-b bg-background lg:h-screen lg:w-72 lg:shrink-0 lg:overflow-hidden lg:border-b-0 lg:border-r">
       <div className="flex h-full flex-col gap-6 p-4 lg:p-6">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Cpu className="h-5 w-5" />
+            <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-black/10">
+              <Image src="/images/Logo.png" alt="LemonClaw logo" fill sizes="40px" className="object-cover" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">资源工作台</p>

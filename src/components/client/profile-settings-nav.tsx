@@ -102,11 +102,8 @@ export function ProfileSettingsNav() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
+      <div>
         <h2 className="text-sm font-semibold text-foreground">设置导航</h2>
-        <p className="text-sm leading-6 text-muted-foreground">
-          参考 `shadcn-admin` 的 settings 结构，按模块查看当前账号状态。
-        </p>
       </div>
 
       <div className="md:hidden">

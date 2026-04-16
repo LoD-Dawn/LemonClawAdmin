@@ -303,9 +303,6 @@ export default async function ProfilePage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">个人设置</h1>
-        <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-          参考 `shadcn-admin` 的 settings 页面重构，统一查看当前账号额度、登录资料、组织身份和最近调用记录。
-        </p>
       </div>
 
       <Separator />
