@@ -77,7 +77,7 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">资源工作台</p>
-              <p className="text-xs text-muted-foreground">Client Portal</p>
+              <p className="text-xs text-muted-foreground">柠檬虾</p>
             </div>
           </div>
 
