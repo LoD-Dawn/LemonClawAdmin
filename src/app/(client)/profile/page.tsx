@@ -292,28 +292,28 @@ export default async function ProfilePage() {
       value: totalSessions,
       suffix: '次',
       icon: Layers3,
-      accentClassName: 'bg-slate-50 text-slate-600 ring-slate-100',
+      accentClassName: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
     },
     {
       label: '近 7 日会话',
       value: weeklySessions,
       suffix: '次',
       icon: Sparkles,
-      accentClassName: 'bg-sky-50 text-sky-600 ring-sky-100',
+      accentClassName: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
     },
     {
       label: '今日用量',
       value: isUnlimited ? '无限制' : formatCredits(todayConsumedCredits),
       suffix: isUnlimited ? '' : '积分',
       icon: Activity,
-      accentClassName: 'bg-violet-50 text-violet-600 ring-violet-100',
+      accentClassName: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
     },
     {
       label: '剩余额度',
       value: isUnlimited ? '无限制' : formatCredits(remainingCredits),
       suffix: isUnlimited ? '' : '积分',
       icon: Wallet,
-      accentClassName: 'bg-amber-50 text-amber-600 ring-amber-100',
+      accentClassName: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
     },
   ]
 
@@ -322,7 +322,7 @@ export default async function ProfilePage() {
       <div className="space-y-6 px-4 sm:px-0">
         <Card
           id="overview"
-          className="overflow-hidden border border-slate-200/60 bg-white shadow-[0_2px_12px_-4px_rgba(15,23,42,0.1)]"
+          className="overflow-hidden border border-slate-200/50 bg-white shadow-none"
         >
           <CardContent className="p-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -366,7 +366,7 @@ export default async function ProfilePage() {
                   <Button
                     type="submit"
                     variant="outline"
-                    className="h-10 rounded-xl border-slate-300 bg-white px-4 text-xs font-bold text-slate-700 shadow-sm transition-all hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+                    className="h-10 rounded-xl border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 shadow-none transition-all hover:bg-slate-50 hover:text-slate-900"
                   >
                     <LogOut className="mr-2 h-3.5 w-3.5" />
                     退出登录
@@ -466,21 +466,21 @@ export default async function ProfilePage() {
                   value={todaySessions}
                   unit="次"
                   icon={History}
-                  accentClassName="bg-sky-50 text-sky-600 ring-sky-100"
+                  accentClassName="bg-slate-50 text-slate-400 ring-1 ring-slate-100"
                 />
                 <MiniStat
                   label="今日消耗"
                   value={isUnlimited ? '∞' : formatCredits(todayConsumedCredits)}
                   unit={isUnlimited ? '' : '积分'}
                   icon={Wallet}
-                  accentClassName="bg-slate-50 text-slate-600 ring-slate-100"
+                  accentClassName="bg-slate-50 text-slate-400 ring-1 ring-slate-100"
                 />
                 <MiniStat
                   label="总计消耗"
                   value={isUnlimited ? '∞' : formatCredits(totalConsumedCredits)}
                   unit={isUnlimited ? '' : '积分'}
                   icon={BadgeCheck}
-                  accentClassName="bg-violet-50 text-violet-600 ring-violet-100"
+                  accentClassName="bg-slate-50 text-slate-400 ring-1 ring-slate-100"
                 />
               </div>
             </CardContent>
@@ -536,7 +536,7 @@ export default async function ProfilePage() {
         >
           <CardHeader className="flex flex-col gap-4 border-b border-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500 text-white shadow-lg shadow-violet-100">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white leading-none">
                 <History className="h-5 w-5 fill-current" />
               </div>
               <CardTitle className="text-lg font-bold tracking-tight text-slate-900">

@@ -5,11 +5,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
-import { 
-  LayoutDashboard, 
-  BadgeCheck, 
-  Key, 
-  FileText, 
+import {
+  LayoutDashboard,
+  BadgeCheck,
+  Key,
+  FileText,
   Users,
   ShieldCheck
 } from 'lucide-react'
@@ -25,7 +25,7 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
   const pathname = usePathname()
   const [activeHash, setActiveHash] = useState('')
   const canManage = user.isSuperAdmin || user.isDepartmentAdmin
-  
+
   const navItems = [
     { href: '#overview', label: '仪表盘', icon: LayoutDashboard },
     { href: '#subscription', label: '订阅管理', icon: BadgeCheck },
@@ -60,8 +60,8 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
         {navItems.map((item) => {
           const Icon = item.icon
           const isAnchor = item.href.startsWith('#')
-          const isActive = isAnchor 
-            ? activeHash === item.href 
+          const isActive = isAnchor
+            ? activeHash === item.href
             : pathname === item.href
 
           return (
