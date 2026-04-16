@@ -28,7 +28,7 @@ export function ClientLayoutShell({ children, user }: ClientLayoutShellProps) {
   const shouldBlockWorkspace = user.accountType === 'consumer' && user.requiresPhoneBinding && pathname !== '/profile'
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-slate-50/60 transition-colors duration-500">
       <ClientHeader user={user} />
       <div className="h-[calc(100vh-64px)] overflow-hidden">
         <main id="client-workspace" className="h-full overflow-y-auto">

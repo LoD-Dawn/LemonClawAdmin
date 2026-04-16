@@ -37,12 +37,12 @@ export function ClientHeader({ user }: ClientHeaderProps) {
               </div>
               <div className="flex flex-col -space-y-1">
                 <span className="text-xl font-black tracking-tighter text-slate-900">LemonClaw</span>
-                <span className="text-[10px] font-black tracking-[0.2em] text-emerald-500 uppercase ml-0.5">柠檬虾</span>
+                <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase ml-0.5">柠檬虾</span>
               </div>
             </Link>
 
             <nav className="hidden items-center lg:flex">
-              <span className="text-[13px] font-black text-emerald-500">控制台</span>
+              <span className="text-[13px] font-black text-slate-900">控制台</span>
             </nav>
           </div>
 
@@ -50,7 +50,7 @@ export function ClientHeader({ user }: ClientHeaderProps) {
             <div className="flex items-center gap-2 rounded-full border border-slate-100 bg-slate-50 p-1 pr-4 shadow-sm">
               <Avatar className="h-8 w-8 ring-2 ring-white">
                 <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
-                <AvatarFallback className="bg-emerald-500 text-white text-[10px] font-black">{getInitials(user.name)}</AvatarFallback>
+                <AvatarFallback className="bg-slate-100 text-slate-900 text-[10px] font-black border border-slate-200">{getInitials(user.name)}</AvatarFallback>
               </Avatar>
               <span className="text-[11px] font-black text-slate-700 tracking-tight">{user.name || user.email?.split('@')[0]}</span>
             </div>

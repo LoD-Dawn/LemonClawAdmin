@@ -91,10 +91,10 @@ function DashboardMetricCard({
     <Card className="group relative overflow-hidden border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-md">
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[13px] font-semibold text-slate-600">
+          <p className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">
             {label}
           </p>
-          <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset', accentClassName)}>
+          <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset bg-slate-50/50 ring-slate-200/60', accentClassName)}>
             <Icon className="h-4 w-4" />
           </div>
         </div>
@@ -292,7 +292,7 @@ export default async function ProfilePage() {
       value: totalSessions,
       suffix: '次',
       icon: Layers3,
-      accentClassName: 'bg-emerald-50 text-emerald-600 ring-emerald-100',
+      accentClassName: 'bg-slate-50 text-slate-600 ring-slate-100',
     },
     {
       label: '近 7 日会话',
@@ -327,7 +327,7 @@ export default async function ProfilePage() {
           <CardContent className="p-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-5">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-2xl font-bold text-white shadow-lg shadow-emerald-200">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-2xl font-bold text-white">
                   {displayName[0]?.toUpperCase() || 'U'}
                 </div>
                 <div className="space-y-1">
@@ -337,7 +337,7 @@ export default async function ProfilePage() {
                     </h1>
                     <Badge
                       variant="secondary"
-                      className="h-6 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[10px] font-bold tracking-tight text-emerald-800"
+                      className="h-6 rounded-full border border-slate-200 bg-slate-100 px-2.5 text-[10px] font-bold tracking-tight text-slate-700"
                     >
                       {tierMeta.label}
                     </Badge>
@@ -352,10 +352,10 @@ export default async function ProfilePage() {
                     'inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-bold',
                     needsPhoneBinding
                       ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-                      : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                      : 'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
                   )}
                 >
-                  <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+                  <ShieldCheck className={cn('mr-1.5 h-3.5 w-3.5', !needsPhoneBinding && 'text-emerald-600')} />
                   {securityLabel}
                 </div>
 
@@ -391,7 +391,7 @@ export default async function ProfilePage() {
             <CardHeader className="border-b border-slate-50 p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-100">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white leading-none">
                     <Zap className="h-5 w-5 fill-current" />
                   </div>
                   <CardTitle className="text-lg font-bold tracking-tight text-slate-900">
@@ -402,7 +402,7 @@ export default async function ProfilePage() {
                 <Button
                   asChild
                   size="sm"
-                  className="h-9 rounded-xl bg-emerald-600 font-bold text-xs px-4 shadow-sm hover:bg-emerald-700"
+                  className="h-9 rounded-xl bg-slate-900 font-bold text-xs px-4 shadow-sm hover:bg-slate-800"
                 >
                   <Link href={tierMeta.actionHref}>{tierMeta.actionLabel}</Link>
                 </Button>
@@ -414,22 +414,22 @@ export default async function ProfilePage() {
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-2xl font-bold tracking-tight text-slate-950">
+                      <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                         {tierMeta.label}
                       </h2>
-                      <Badge className="h-6 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[10px] font-bold tracking-tight text-emerald-800">
+                      <Badge className="h-6 rounded-full border border-slate-200 bg-slate-100 px-2.5 text-[10px] font-bold tracking-tight text-slate-700">
                         {pricingVersion}
                       </Badge>
                     </div>
-                    <p className="text-xs font-semibold text-slate-600">{quotaNote}</p>
+                    <p className="text-xs font-semibold text-slate-500">{quotaNote}</p>
                   </div>
 
                   <div className="space-y-1 lg:text-right">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       可用余额
                     </p>
                     <div className="flex items-baseline gap-2 lg:justify-end">
-                      <span className="text-3xl font-bold tracking-tight text-slate-950 tabular-nums">
+                      <span className="text-3xl font-bold tracking-tight text-slate-900 tabular-nums">
                         {isUnlimited ? '∞' : formatCredits(remainingCredits)}
                       </span>
                       {!isUnlimited ? (
@@ -445,7 +445,7 @@ export default async function ProfilePage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                    <Activity className="h-3.5 w-3.5 text-emerald-600" />
+                    <Activity className="h-3.5 w-3.5 text-slate-400" />
                     使用进度
                   </div>
                   <span className="text-xs font-bold text-slate-700 tabular-nums">
@@ -454,7 +454,7 @@ export default async function ProfilePage() {
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-700 ease-out"
+                    className="h-full rounded-full bg-slate-400 transition-all duration-700 ease-out"
                     style={{ width: `${quotaProgress}%` }}
                   />
                 </div>
@@ -473,7 +473,7 @@ export default async function ProfilePage() {
                   value={isUnlimited ? '∞' : formatCredits(todayConsumedCredits)}
                   unit={isUnlimited ? '' : '积分'}
                   icon={Wallet}
-                  accentClassName="bg-emerald-50 text-emerald-600 ring-emerald-100"
+                  accentClassName="bg-slate-50 text-slate-600 ring-slate-100"
                 />
                 <MiniStat
                   label="总计消耗"
@@ -490,8 +490,8 @@ export default async function ProfilePage() {
             <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm">
               <CardHeader className="border-b border-slate-50 p-6">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500 text-white shadow-lg shadow-sky-100">
-                    <BriefcaseBusiness className="h-5 w-5 fill-current" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white leading-none">
+                    <span className="text-xs font-bold select-none">ID</span>
                   </div>
                   <CardTitle className="text-lg font-bold tracking-tight text-slate-900">
                     账号详情
@@ -515,7 +515,7 @@ export default async function ProfilePage() {
                       'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold',
                       needsPhoneBinding
                         ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-                        : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                        : 'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
                     )}
                   >
                     {securityLabel}
@@ -601,7 +601,7 @@ export default async function ProfilePage() {
                           <div className="space-y-1">
                             <p className="text-xs font-bold text-slate-900">{sessionItem.model}</p>
                             <div className="flex items-center gap-2">
-                              <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+                              <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">
                                 {sessionItem.provider}
                               </span>
                             </div>

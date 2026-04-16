@@ -71,22 +71,19 @@ export function ClientSidebar({ user }: ClientSidebarProps) {
               onClick={() => isAnchor && setActiveHash(item.href)}
               className={cn(
                 buttonVariants({ variant: 'ghost' }),
-                'h-9 justify-start px-2 -ml-2 transition-all duration-200 group relative',
+                'h-10 justify-start px-3 -ml-1 transition-all duration-200 group relative rounded-lg',
                 isActive
-                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-50'
-                  : 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-900'
+                  ? 'bg-slate-200/60 text-slate-900 shadow-none'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
               )}
             >
               <div className="flex items-center gap-2.5">
                 <Icon className={cn(
                   'h-4 w-4 shrink-0 transition-colors',
-                  isActive ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-600'
+                  isActive ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'
                 )} />
                 <span className="text-[13px] font-bold tracking-tight">{item.label}</span>
               </div>
-              {isActive && (
-                <div className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-emerald-500 rounded-full" />
-              )}
             </Link>
           )
         })}
