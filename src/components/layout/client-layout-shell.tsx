@@ -27,10 +27,10 @@ export function ClientLayoutShell({ children, user }: ClientLayoutShellProps) {
   const shouldBlockWorkspace = user.accountType === 'consumer' && user.requiresPhoneBinding && pathname !== '/profile'
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="flex min-h-screen flex-col lg:flex-row">
+    <div className="min-h-screen bg-muted/30 lg:h-screen lg:overflow-hidden">
+      <div className="flex min-h-screen flex-col lg:h-screen lg:flex-row">
         <ClientSidebar user={user} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 lg:min-h-0 lg:overflow-y-auto">
           <main id="client-workspace" className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
             {shouldBlockWorkspace ? (
               <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-2xl items-center justify-center">

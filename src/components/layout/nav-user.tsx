@@ -3,7 +3,6 @@
 import {
   ChevronsUpDown,
   LogOut,
-  User as UserIcon,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import {
@@ -14,7 +13,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -85,13 +83,6 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem disabled>
-                <UserIcon className="mr-2 h-4 w-4" />
-                个人设置
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"

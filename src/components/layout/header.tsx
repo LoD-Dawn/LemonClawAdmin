@@ -1,9 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { ProfileDropdown } from './profile-dropdown'
 import { Search } from './search'
 import { ThemeSwitch } from './theme-switch'
@@ -47,9 +45,6 @@ export function Header({ user }: HeaderProps) {
 
       <div className='flex items-center gap-2'>
         <ThemeSwitch />
-        <Button variant='ghost' size='icon' className='h-8 w-8 rounded-full'>
-          <Settings className='h-4 w-4' />
-        </Button>
         <ProfileDropdown user={user} />
       </div>
     </header>

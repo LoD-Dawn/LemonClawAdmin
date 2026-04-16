@@ -11,7 +11,7 @@ type SearchProps = {
 
 export function Search({
   className = '',
-  placeholder = '搜索 (⌘K)',
+  placeholder = '搜索',
 }: SearchProps) {
   return (
     <Button
@@ -28,7 +28,7 @@ export function Search({
         aria-hidden='true'
         className='absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground'
       />
-      <span className='ml-5'>{placeholder.includes('搜索') ? 'Search' : placeholder}</span>
+      <span className='ml-5'>{placeholder}</span>
       <kbd className='pointer-events-none absolute right-1.5 top-1/2 hidden h-5 -translate-y-1/2 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 select-none group-hover:bg-accent sm:flex'>
         <span className='text-[10px] font-sans'>⌘</span>K
       </kbd>
