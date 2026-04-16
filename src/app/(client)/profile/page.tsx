@@ -5,9 +5,9 @@ import { db } from '@/lib/db'
 import { cn } from '@/lib/utils'
 import {
   DEFAULT_PRICING_VERSION,
-  SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS,
   getEffectiveUserClawCreditBalance,
   isUserClawQuotaExpired,
+  SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS,
 } from '@/lib/user-claw-quota-policy'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import {
   Table,
   TableBody,
@@ -27,18 +26,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { PhoneBindingCard } from '@/components/client/phone-binding-card'
-import { ProfileSettingsNav } from '@/components/client/profile-settings-nav'
-import { ProfileSettingsSection } from '@/components/client/profile-settings-section'
 import {
+  Activity,
   ArrowRight,
-  CalendarClock,
+  BadgeCheck,
+  BriefcaseBusiness,
   Clock3,
   Crown,
-  CreditCard,
+  History,
+  LogOut,
   ShieldCheck,
   Sparkles,
-  UserRound,
   Wallet,
+  Zap,
 } from 'lucide-react'
 
 export const runtime = 'nodejs'
@@ -46,15 +46,12 @@ export const runtime = 'nodejs'
 function formatCredits(value: number) {
   return new Intl.NumberFormat('zh-CN', {
     minimumFractionDigits: value % 1 === 0 ? 0 : 1,
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
 function formatDateTime(value: Date | string | null | undefined) {
-  if (!value) {
-    return '暂无记录'
-  }
-
+  if (!value) return '暂无记录'
   return new Date(value).toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -64,68 +61,54 @@ function formatDateTime(value: Date | string | null | undefined) {
   })
 }
 
-function formatDuration(seconds: number) {
-  if (seconds <= 0) {
-    return '0 分钟'
-  }
-
-  if (seconds < 60) {
-    return `${seconds} 秒`
-  }
-
-  const minutes = Math.floor(seconds / 60)
-  const restSeconds = seconds % 60
-  return restSeconds > 0 ? `${minutes} 分 ${restSeconds} 秒` : `${minutes} 分钟`
-}
-
-function OverviewMetricCard({
+function DashboardMetricCard({
   label,
   value,
-  suffix,
-  note,
-  icon,
+  suffix = '',
 }: {
   label: string
-  value: string
+  value: string | number
   suffix?: string
-  note: string
-  icon: React.ReactNode
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-start justify-between gap-4 p-6">
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <div className="flex items-end gap-2">
-            <p className="text-3xl font-semibold tracking-tight text-foreground">{value}</p>
-            {suffix ? <span className="pb-1 text-sm text-muted-foreground">{suffix}</span> : null}
-          </div>
-          <p className="text-sm leading-6 text-muted-foreground">{note}</p>
+    <Card className="border-none bg-white/50 shadow-none ring-1 ring-slate-200/80 transition-all hover:ring-emerald-200/50 hover:bg-white">
+      <CardContent className="p-4 space-y-2.5">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+        <div className="flex items-baseline gap-1">
+          <span className="text-3xl font-black tracking-tighter text-slate-950">{value}</span>
+          {suffix && <span className="text-[11px] font-bold text-slate-400 uppercase">{suffix}</span>}
         </div>
-        <div className="rounded-lg border bg-muted/40 p-2.5 text-muted-foreground">{icon}</div>
       </CardContent>
     </Card>
   )
 }
 
-function DetailItem({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
+function MiniStat({ label, value, unit = '', icon: Icon }: { label: string; value: string | number; unit?: string; icon?: any }) {
   return (
-    <div className="space-y-1">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium text-foreground">{value}</p>
+    <div className="rounded-2xl border border-slate-100 bg-white p-3.5 transition-all hover:border-emerald-200/50 hover:shadow-sm group">
+      <div className="flex items-center gap-2 mb-2">
+        {Icon && <Icon className="h-3 w-3 text-slate-300 group-hover:text-emerald-500 transition-colors" />}
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</p>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-lg font-black text-slate-950 tracking-tight">{value}</span>
+        {unit && <span className="text-[9px] font-bold text-slate-400 uppercase">{unit}</span>}
+      </div>
+    </div>
+  )
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between py-1 border-b border-slate-50 last:border-0">
+      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+      <span className="text-[11px] font-black text-slate-900 tracking-tight">{value}</span>
     </div>
   )
 }
 
 export default async function ProfilePage() {
   const session = await auth()
-
   if (!session?.user) {
     redirect('/login/consumer?callbackUrl=%2Fprofile')
   }
@@ -146,78 +129,32 @@ export default async function ProfilePage() {
         isSuperAdmin: true,
         isDepartmentAdmin: true,
         createdAt: true,
-        organization: {
-          select: {
-            name: true,
-          },
-        },
-        department: {
-          select: {
-            name: true,
-          },
-        },
+        organization: { select: { name: true } },
+        department: { select: { name: true } },
       },
     }),
     db.userClawQuota.findUnique({
       where: { userId: session.user.id },
-      select: {
-        creditBalance: true,
-        pricingVersion: true,
-        expiresAt: true,
-      },
+      select: { creditBalance: true, pricingVersion: true, expiresAt: true },
     }),
     db.clawSessionReservation.aggregate({
-      where: {
-        userId: session.user.id,
-        closed: true,
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        finalConsumedCredits: true,
-      },
+      where: { userId: session.user.id, closed: true },
+      _count: { id: true },
+      _sum: { finalConsumedCredits: true },
     }),
     db.clawSessionReservation.aggregate({
-      where: {
-        userId: session.user.id,
-        closed: true,
-        closedAt: {
-          gte: sevenDaysAgo,
-        },
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        finalConsumedCredits: true,
-      },
+      where: { userId: session.user.id, closed: true, closedAt: { gte: sevenDaysAgo } },
+      _count: { id: true },
+      _sum: { finalConsumedCredits: true },
     }),
     db.clawSessionReservation.aggregate({
-      where: {
-        userId: session.user.id,
-        closed: true,
-        closedAt: {
-          gte: todayStart,
-        },
-      },
-      _sum: {
-        finalConsumedCredits: true,
-      },
+      where: { userId: session.user.id, closed: true, closedAt: { gte: todayStart } },
+      _count: { id: true },
+      _sum: { finalConsumedCredits: true },
     }),
     db.clawSessionReservation.findMany({
-      where: {
-        userId: session.user.id,
-        closed: true,
-      },
-      orderBy: [
-        {
-          closedAt: 'desc',
-        },
-        {
-          updatedAt: 'desc',
-        },
-      ],
+      where: { userId: session.user.id, closed: true },
+      orderBy: [{ closedAt: 'desc' }, { updatedAt: 'desc' }],
       take: 8,
       select: {
         id: true,
@@ -235,346 +172,282 @@ export default async function ProfilePage() {
     }),
   ])
 
-  if (!user) {
-    redirect('/login/consumer?callbackUrl=%2Fprofile')
-  }
+  if (!user) redirect('/login/consumer?callbackUrl=%2Fprofile')
 
   const isUnlimited = user.isSuperAdmin || user.isDepartmentAdmin
-  const remainingCredits = isUnlimited ? quota?.creditBalance ?? 0 : getEffectiveUserClawCreditBalance(quota)
+  const remainingCredits = isUnlimited ? (quota?.creditBalance ?? 0) : getEffectiveUserClawCreditBalance(quota)
   const totalConsumedCredits = totalUsage._sum.finalConsumedCredits ?? 0
-  const weeklyConsumedCredits = weeklyUsage._sum.finalConsumedCredits ?? 0
   const todayConsumedCredits = todayUsage._sum.finalConsumedCredits ?? 0
   const totalSessions = totalUsage._count.id ?? 0
   const weeklySessions = weeklyUsage._count.id ?? 0
   const pricingVersion = quota?.pricingVersion ?? DEFAULT_PRICING_VERSION
   const quotaExpired = !isUnlimited && isUserClawQuotaExpired(quota)
+
   const quotaCap = isUnlimited
     ? null
     : Math.max(
-        SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS,
-        remainingCredits + totalConsumedCredits,
-        quota?.creditBalance ?? 0
-      )
+      SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS,
+      (remainingCredits + totalConsumedCredits) || 0,
+      quota?.creditBalance ?? 0
+    )
   const quotaProgress = quotaCap ? Math.min(100, Math.max(0, (remainingCredits / quotaCap) * 100)) : 100
+
   const tierMeta = isUnlimited
     ? {
-        label: '管理席位',
-        note: user.isSuperAdmin ? '超级管理员' : '部门管理员',
-        description: '当前账号拥有管理级权限，不受普通积分配额限制，但仍保留调用记录与消耗统计。',
-        badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
-        progressClassName: 'bg-amber-500',
-        actionHref: '/dashboard',
-        actionLabel: '进入管理控制台',
-        icon: <Crown className="h-4 w-4" />,
-      }
+      label: '管理席位',
+      description: '拥有管理级权限，不受普通配额限制。',
+      actionHref: '/dashboard',
+      actionLabel: '进入后台',
+    }
     : user.accountType === 'enterprise'
       ? {
-          label: '企业成员',
-          note: '当前套餐',
-          description: '当前账号通过企业入口使用平台资源，可查看个人额度、组织归属与最近使用情况。',
-          badgeClassName: 'border-sky-200 bg-sky-50 text-sky-700',
-          progressClassName: 'bg-sky-600',
-          actionHref: '/profile',
-          actionLabel: '查看个人概览',
-          icon: <ShieldCheck className="h-4 w-4" />,
-        }
+        label: '企业成员',
+        description: '通过企业入口使用资源。',
+        actionHref: '/profile',
+        actionLabel: '查看额度',
+      }
       : {
-          label: '免费版',
-          note: '当前套餐',
-          description: `基础功能已开通，默认赠送 ${SELF_SERVICE_CONSUMER_REGISTRATION_CREDITS} 积分额度，适合普通用户试用。`,
-          badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
-          progressClassName: 'bg-slate-900',
-          actionHref: '/profile',
-          actionLabel: '查看当前额度',
-          icon: <Sparkles className="h-4 w-4" />,
-        }
+        label: '普通用户',
+        description: '基础功能已开通。',
+        actionHref: '/profile',
+        actionLabel: '查看额度',
+      }
 
   const quotaNote = isUnlimited
     ? '当前账号无限制使用'
     : quotaExpired
-      ? '额度已过期，如需继续使用请联系管理员'
+      ? '额度已过期'
       : quota?.expiresAt
         ? `有效期至 ${new Date(quota.expiresAt).toLocaleDateString('zh-CN')}`
-        : '当前额度未设置到期时间'
+        : '当前额度永久有效'
+
   const needsPhoneBinding = session.user.requiresPhoneBinding || !user.phone
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">个人设置</h1>
+    <div className="mx-auto w-full max-w-6xl space-y-6 pb-12 font-sans antialiased">
+      {/* User Header Card */}
+      <Card id="overview" className="border-none shadow-none ring-1 ring-slate-200/80 overflow-hidden bg-white/50 backdrop-blur-sm">
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 text-slate-600 font-black text-xl">
+                {user.email?.[0].toUpperCase() || 'U'}
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xl font-black text-slate-950 leading-none tracking-tight">{user.email}</p>
+                <div className="flex items-center gap-2 pt-1.5">
+                  <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 border-none h-5 px-1.5 text-[10px] font-black uppercase tracking-wider">
+                    {tierMeta.label}
+                  </Badge>
+                  <span className="text-[10px] font-bold text-slate-400 tracking-widest">UID: {user.id.slice(0, 8).toUpperCase()}</span>
+                </div>
+              </div>
+            </div>
+            <form action="/api/auth/signout" method="POST">
+              <input type="hidden" name="callbackUrl" value="/login" />
+              <Button type="submit" variant="outline" className="h-9 border-slate-200 bg-white text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-100 transition-all font-black text-[11px] px-4 rounded-xl">
+                <LogOut className="h-3.5 w-3.5 mr-2" />
+                退出登录
+              </Button>
+            </form>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DashboardMetricCard
+          label="总会话数"
+          value={totalSessions}
+          suffix="次"
+        />
+        <DashboardMetricCard
+          label="近 7 日会话"
+          value={weeklySessions}
+          suffix="次"
+        />
+        <DashboardMetricCard
+          label="今日用量"
+          value={isUnlimited ? '无限制' : formatCredits(todayConsumedCredits)}
+          suffix={isUnlimited ? '' : '积分'}
+        />
+        <DashboardMetricCard
+          label="剩余额度"
+          value={isUnlimited ? '无限制' : formatCredits(remainingCredits)}
+          suffix={isUnlimited ? '' : '积分'}
+        />
       </div>
 
-      <Separator />
-
-      <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
-        <aside className="lg:sticky lg:top-6 lg:w-64 lg:self-start">
-          <ProfileSettingsNav />
-        </aside>
-
-        <div className="min-w-0 flex-1 space-y-10">
-          <ProfileSettingsSection
-            id="overview"
-            title="额度与套餐总览"
-          >
-            <Card>
-              <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle className="text-2xl">{tierMeta.label}</CardTitle>
-                    <Badge className={cn('px-2.5 py-0.5', tierMeta.badgeClassName)}>
-                      <span className="mr-1 inline-flex">{tierMeta.icon}</span>
-                      {tierMeta.note}
-                    </Badge>
-                  </div>
-                </div>
-                <Badge variant="outline" className="w-fit">
-                  {quotaNote}
-                </Badge>
-              </CardHeader>
-              <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px]">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
-                    <span>剩余额度</span>
-                    {!isUnlimited && quotaCap ? (
-                      <span className="font-medium text-foreground">
-                        {formatCredits(remainingCredits)} / {formatCredits(quotaCap)} 积分
-                      </span>
-                    ) : (
-                      <span className="font-medium text-foreground">当前账号无限制</span>
-                    )}
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn('h-full rounded-full transition-all duration-300', tierMeta.progressClassName)}
-                      style={{ width: `${quotaProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                      <p className="text-3xl font-semibold tracking-tight text-foreground">
-                        {isUnlimited ? '无限制' : formatCredits(remainingCredits)}
-                        {!isUnlimited ? (
-                          <span className="ml-2 text-base font-medium text-muted-foreground">
-                            积分
-                          </span>
-                        ) : null}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">定价版本 {pricingVersion}</p>
-                    </div>
-                    <Button asChild>
-                      <Link href={tierMeta.actionHref}>
-                        {tierMeta.actionLabel}
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <div className="space-y-4">
-                    <DetailItem label="账号类型" value={user.accountType === 'enterprise' ? '企业成员' : '普通用户'} />
-                    <DetailItem label="组织" value={user.organization?.name ?? '未绑定组织'} />
-                    <DetailItem label="部门" value={user.department?.name ?? '无'} />
-                    <DetailItem label="创建时间" value={formatDateTime(user.createdAt)} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <OverviewMetricCard
-                label="总会话数"
-                value={String(totalSessions)}
-                note="当前账号累计完成的调用会话数"
-                icon={<UserRound className="h-5 w-5" />}
-              />
-              <OverviewMetricCard
-                label="近 7 日会话"
-                value={String(weeklySessions)}
-                note={`近 7 日共消耗 ${formatCredits(weeklyConsumedCredits)} 积分`}
-                icon={<CalendarClock className="h-5 w-5" />}
-              />
-              <OverviewMetricCard
-                label="今日用量"
-                value={isUnlimited ? '无限制' : formatCredits(todayConsumedCredits)}
-                suffix={isUnlimited ? undefined : '积分'}
-                note={isUnlimited ? '管理席位不受普通积分限制' : '按今日已结束会话计算'}
-                icon={<CreditCard className="h-5 w-5" />}
-              />
-              <OverviewMetricCard
-                label="剩余额度"
-                value={isUnlimited ? '无限制' : formatCredits(remainingCredits)}
-                suffix={isUnlimited ? undefined : '积分'}
-                note={quotaNote}
-                icon={<Wallet className="h-5 w-5" />}
-              />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch pt-2">
+        {/* Left: Quota Overview */}
+        <Card id="subscription" className="lg:col-span-12 xl:col-span-7 border-none shadow-none ring-1 ring-slate-200/80 flex flex-col scroll-mt-20 bg-white/50 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                <Zap className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <CardTitle className="text-[13px] font-black text-slate-950 uppercase tracking-wide">额度与套餐总览</CardTitle>
+                <p className="text-[11px] font-bold text-slate-400">Resource Quota & Subscription</p>
+              </div>
             </div>
-          </ProfileSettingsSection>
-
-          <ProfileSettingsSection
-            id="account"
-            title="登录与联系信息"
-          >
-            <div className="flex flex-wrap gap-2">
-              <Badge
-                className={
-                  needsPhoneBinding
-                    ? 'border-amber-200 bg-amber-50 text-amber-700'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                }
-              >
-                {needsPhoneBinding ? '待绑定手机号' : '手机号已绑定'}
-              </Badge>
-              <Badge variant="outline">
-                {user.accountType === 'enterprise' ? '邮箱 + 密码登录' : '手机号 + 验证码登录'}
-              </Badge>
+            <Button asChild size="sm" className="h-8 bg-emerald-500 hover:bg-emerald-600 font-black rounded-lg text-[11px]">
+              <Link href={tierMeta.actionHref}>{tierMeta.actionLabel}</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="p-5 flex-1 flex flex-col justify-between space-y-8">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-2xl font-black text-slate-950 tracking-tight">{tierMeta.label}</h3>
+                  <Badge className="bg-emerald-500/15 text-emerald-700 border-none px-2 py-0.5 h-auto text-[10px] font-black">
+                    {pricingVersion}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-slate-400 font-bold">{quotaNote}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">当前余额</p>
+                <p className="text-3xl font-black text-slate-950 tracking-tight">
+                  {isUnlimited ? '无限制' : formatCredits(remainingCredits)}
+                  {!isUnlimited && <span className="text-[11px] font-bold ml-1 text-slate-400 uppercase">Credits</span>}
+                </p>
+              </div>
             </div>
 
-            <div className="grid gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">基本资料</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2">
-                  <DetailItem label="姓名" value={user.name ?? '未设置'} />
-                  <DetailItem label="邮箱" value={user.email ?? '未设置'} />
-                  <DetailItem label="手机号" value={user.phone ?? '未绑定'} />
-                  <DetailItem
-                    label="登录方式"
-                    value={user.accountType === 'enterprise' ? '邮箱 + 密码' : '手机号 + 验证码'}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </ProfileSettingsSection>
-
-          <ProfileSettingsSection
-            id="organization"
-            title="组织与身份归属"
-          >
-            <div className="grid gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">组织信息</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2">
-                  <DetailItem label="账号类型" value={user.accountType === 'enterprise' ? '企业成员' : '普通用户'} />
-                  <DetailItem
-                    label="权限级别"
-                    value={
-                      user.isSuperAdmin
-                        ? '超级管理员'
-                        : user.isDepartmentAdmin
-                          ? '部门管理员'
-                          : '标准使用者'
-                    }
-                  />
-                  <DetailItem label="组织" value={user.organization?.name ?? '未绑定组织'} />
-                  <DetailItem label="部门" value={user.department?.name ?? '无'} />
-                  <DetailItem label="创建时间" value={formatDateTime(user.createdAt)} />
-                  <DetailItem label="用户 ID" value={user.id} />
-                </CardContent>
-              </Card>
-            </div>
-          </ProfileSettingsSection>
-
-          <ProfileSettingsSection
-            id="security"
-            title="手机号绑定与安全校验"
-          >
-            {needsPhoneBinding ? (
-              <PhoneBindingCard initialPhone={user.phone} required={session.user.requiresPhoneBinding} />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">校验通过</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2">
-                  <DetailItem label="已绑定号码" value={user.phone ?? '未绑定'} />
-                  <DetailItem label="状态" value="后续登录默认走手机号 + 验证码流程" />
-                </CardContent>
-              </Card>
-            )}
-          </ProfileSettingsSection>
-
-          <ProfileSettingsSection
-            id="usage"
-            title="最近调用记录"
-          >
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base">最近 8 条已结束会话</CardTitle>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <Activity className="h-3 w-3 text-emerald-500" />
+                  Usage Progress
                 </div>
-                <Badge variant="outline">最近更新</Badge>
-              </CardHeader>
+                <span className="text-[10px] font-black text-slate-400">
+                  {quotaProgress}%
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-700 ease-in-out shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                  style={{ width: `${quotaProgress}%` }}
+                />
+              </div>
+            </div>
 
-              <CardContent className="p-0">
-                {recentSessions.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="px-6">消息</TableHead>
-                        <TableHead>时间</TableHead>
-                        <TableHead>模型</TableHead>
-                        <TableHead>时长</TableHead>
-                        <TableHead className="px-6 text-right">消耗积分</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentSessions.map((sessionItem) => {
-                        const sessionLabel = sessionItem.workspacePath
-                          ? sessionItem.workspacePath.split(/[\\/]/).filter(Boolean).pop()
-                          : sessionItem.entry === 'desktop'
-                            ? '桌面端会话'
-                            : '在线调用'
+            <div className="grid grid-cols-3 gap-3">
+              <MiniStat label="今日次数" value={todayUsage._count.id ?? 0} unit="次" icon={History} />
+              <MiniStat label="今日用量" value={formatCredits(todayConsumedCredits)} unit="积分" icon={Wallet} />
+              <MiniStat label="总计用量" value={formatCredits(totalConsumedCredits)} unit="积分" icon={BadgeCheck} />
+            </div>
+          </CardContent>
+        </Card>
 
-                        return (
-                          <TableRow key={sessionItem.id}>
-                            <TableCell className="px-6 py-4">
-                              <div className="space-y-1">
-                                <p className="font-medium text-foreground">{sessionLabel || '会话记录'}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {sessionItem.finishReason || sessionItem.clientSessionId}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-4 text-sm text-muted-foreground">
-                              {formatDateTime(sessionItem.closedAt ?? sessionItem.createdAt)}
-                            </TableCell>
-                            <TableCell className="py-4">
-                              <div className="space-y-1">
-                                <p className="font-medium text-foreground">{sessionItem.model}</p>
-                                <p className="text-xs text-muted-foreground">{sessionItem.provider}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-4 text-sm text-muted-foreground">
-                              {formatDuration(sessionItem.serverAcceptedTotalActiveSeconds)}
-                            </TableCell>
-                            <TableCell className="px-6 py-4 text-right font-medium text-foreground">
-                              {formatCredits(sessionItem.finalConsumedCredits)}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="flex min-h-[240px] flex-col items-center justify-center px-6 py-12 text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                      <Clock3 className="h-5 w-5" />
-                    </div>
-                    <p className="mt-4 text-lg font-medium text-foreground">暂无使用记录</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      所选时间段内无使用记录
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </ProfileSettingsSection>
+        {/* Right: Identity/Org Info */}
+        <Card className="lg:col-span-12 xl:col-span-5 border-none shadow-none ring-1 ring-slate-200/80 flex flex-col bg-white/50 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20">
+                <BriefcaseBusiness className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <CardTitle className="text-[13px] font-black text-slate-950 uppercase tracking-wide">组织身份归属</CardTitle>
+                <p className="text-[11px] font-bold text-slate-400">Identity & Team</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 flex-1 flex flex-col justify-between space-y-5">
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3 shadow-sm">
+              <DetailRow label="账号类型" value={user.accountType === 'enterprise' ? '企业成员' : '普通用户'} />
+              <DetailRow label="组织名称" value={user.organization?.name || '未绑定组织'} />
+              <DetailRow label="所属部门" value={user.department?.name || '无'} />
+              <DetailRow label="成员权限" value={user.isSuperAdmin ? '超级管理员' : user.isDepartmentAdmin ? '部门管理员' : '标准使用者'} />
+              <DetailRow label="创建时间" value={formatDateTime(user.createdAt)} />
+            </div>
+
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center gap-2 text-indigo-500 font-black text-[10px] uppercase tracking-widest">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                安全验证状态
+              </div>
+              <div className={cn(
+                "inline-flex items-center rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider shadow-sm",
+                needsPhoneBinding ? 'bg-amber-100/60 text-amber-700 ring-1 ring-amber-200/50' : 'bg-emerald-500 text-white'
+              )}>
+                {needsPhoneBinding ? '待绑定手机号' : '已完成强验证'}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Security Section */}
+      {needsPhoneBinding && (
+        <div className="grid grid-cols-1 gap-6 pt-2">
+          <PhoneBindingCard initialPhone={user.phone} required={session.user.requiresPhoneBinding} />
         </div>
-      </div>
+      )}
+
+      {/* Usage Logs */}
+      <Card id="usage" className="border-none shadow-none ring-1 ring-slate-200/80 overflow-hidden scroll-mt-20 bg-white/50 backdrop-blur-sm">
+        <CardHeader className="flex flex-row items-center justify-between p-5 pb-3">
+          <CardTitle className="text-[13px] font-black flex items-center gap-2 text-slate-950 uppercase tracking-wide">
+            <History className="h-4 w-4 text-emerald-500" />
+            最近调用记录
+          </CardTitle>
+          <Badge className="bg-slate-950 text-white border-none font-black text-[10px] h-5 px-2">RECENT 8</Badge>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-slate-50/80">
+              <TableRow className="hover:bg-transparent border-slate-100">
+                <TableHead className="px-5 h-10 font-black text-slate-400 text-[10px] uppercase tracking-widest">会话名称/ID</TableHead>
+                <TableHead className="h-10 font-black text-slate-400 text-[10px] uppercase tracking-widest">时间</TableHead>
+                <TableHead className="h-10 font-black text-slate-400 text-[10px] uppercase tracking-widest">模型信息</TableHead>
+                <TableHead className="px-5 h-10 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">消耗积分</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentSessions.length > 0 ? (
+                recentSessions.map((s) => {
+                  const label = s.workspacePath ? s.workspacePath.split(/[\\/]/).pop() : s.entry === 'desktop' ? '桌面端' : '在线调用'
+                  return (
+                    <TableRow key={s.id} className="border-slate-100 hover:bg-white/80 transition-all duration-200">
+                      <TableCell className="px-5 py-4">
+                        <div className="flex flex-col">
+                          <span className="font-black text-slate-900 text-[13px] tracking-tight">{label || '会话'}</span>
+                          <span className="text-[10px] text-slate-400 font-mono tracking-tighter opacity-70">JSID-{s.clientSessionId.slice(0, 8).toUpperCase()}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4 text-[11px] text-slate-500 font-bold">
+                        {formatDateTime(s.closedAt || s.createdAt)}
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <div className="flex flex-col">
+                          <span className="font-black text-slate-800 text-[11px] leading-tight tracking-tight">{s.model}</span>
+                          <span className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-1 opacity-80">{s.provider}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-right">
+                        <span className="font-black text-slate-950 text-[15px] tabular-nums tracking-tight">
+                          {formatCredits(s.finalConsumedCredits)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-48 text-center text-slate-300">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <Clock3 className="h-8 w-8" />
+                      <p className="text-[10px] font-black uppercase tracking-widest">No Active Sessions</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
