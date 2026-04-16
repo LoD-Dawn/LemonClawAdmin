@@ -562,11 +562,11 @@ export default async function DashboardPage() {
 
       <Tabs defaultValue='overview' className='space-y-5'>
         <div className='overflow-x-auto pb-2'>
-          <TabsList className='rounded-xl border border-border/60 bg-background/80 p-1 shadow-sm'>
-            <TabsTrigger value='overview' className='rounded-lg'>总览</TabsTrigger>
-            <TabsTrigger value='analytics' className='rounded-lg'>分析</TabsTrigger>
-            <TabsTrigger value='reports' disabled className='rounded-lg'>报表</TabsTrigger>
-            <TabsTrigger value='notifications' disabled className='rounded-lg'>通知</TabsTrigger>
+          <TabsList className='rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1 shadow-none'>
+            <TabsTrigger value='overview' className='rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm'>总览</TabsTrigger>
+            <TabsTrigger value='analytics' className='rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm'>分析</TabsTrigger>
+            <TabsTrigger value='reports' disabled className='rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm'>报表</TabsTrigger>
+            <TabsTrigger value='notifications' disabled className='rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm'>通知</TabsTrigger>
           </TabsList>
         </div>
 

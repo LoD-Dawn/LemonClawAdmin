@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Cpu } from 'lucide-react'
+import Image from 'next/image'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -20,14 +20,22 @@ export function TeamSwitcher({
           size='lg'
           className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground pointer-events-none'
         >
-          <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground'>
-            <Cpu className='size-4' />
+          <div className='relative aspect-square size-8 overflow-hidden rounded-lg'>
+            <Image
+              src='/images/Logo.png'
+              alt='LemonClaw logo'
+              fill
+              sizes='32px'
+              className='object-cover'
+            />
           </div>
-          <div className='grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden'>
-            <span className='truncate font-semibold'>
+          <div className='grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden'>
+            <span className='truncate text-[15px] font-semibold tracking-[-0.01em]'>
               LemonClaw
             </span>
-            <span className='truncate text-xs'>{roleLabel}</span>
+            <span className='truncate text-[12px] font-normal text-sidebar-foreground/65'>
+              {roleLabel}
+            </span>
           </div>
         </SidebarMenuButton>
       </SidebarMenuItem>
