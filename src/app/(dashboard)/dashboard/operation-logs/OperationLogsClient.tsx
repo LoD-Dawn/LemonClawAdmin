@@ -1,21 +1,12 @@
 'use client'
 
-import type { FormEvent, ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination'
 import {
   Select,
   SelectContent,
@@ -25,7 +16,9 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search } from 'lucide-react'
+import { AdminPageHeader } from '@/components/layout/admin-page-header'
+import { getPageNumbers } from '@/lib/utils'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react'
 
 type OperationLogRow = {
   id: string
@@ -92,88 +85,6 @@ function formatDate(value: string | Date) {
     minute: '2-digit',
     second: '2-digit',
   })
-}
-
-function renderPageNumbers(page: number, pageCount: number, onPageChange: (nextPage: number) => void) {
-  const items: ReactNode[] = []
-
-  if (pageCount <= 7) {
-    for (let i = 1; i <= pageCount; i += 1) {
-      items.push(
-        <PaginationItem key={i}>
-          <PaginationLink
-            href="#"
-            onClick={(event) => {
-              event.preventDefault()
-              onPageChange(i)
-            }}
-            isActive={i === page}
-          >
-            {i}
-          </PaginationLink>
-        </PaginationItem>
-      )
-    }
-
-    return items
-  }
-
-  items.push(
-    <PaginationItem key={1}>
-      <PaginationLink
-        href="#"
-        onClick={(event) => {
-          event.preventDefault()
-          onPageChange(1)
-        }}
-        isActive={page === 1}
-      >
-        1
-      </PaginationLink>
-    </PaginationItem>
-  )
-
-  if (page > 3) {
-    items.push(<PaginationEllipsis key="start-ellipsis" />)
-  }
-
-  for (let i = Math.max(2, page - 1); i <= Math.min(pageCount - 1, page + 1); i += 1) {
-    items.push(
-      <PaginationItem key={i}>
-        <PaginationLink
-          href="#"
-          onClick={(event) => {
-            event.preventDefault()
-            onPageChange(i)
-          }}
-          isActive={i === page}
-        >
-          {i}
-        </PaginationLink>
-      </PaginationItem>
-    )
-  }
-
-  if (page < pageCount - 2) {
-    items.push(<PaginationEllipsis key="end-ellipsis" />)
-  }
-
-  items.push(
-    <PaginationItem key={pageCount}>
-      <PaginationLink
-        href="#"
-        onClick={(event) => {
-          event.preventDefault()
-          onPageChange(pageCount)
-        }}
-        isActive={page === pageCount}
-      >
-        {pageCount}
-      </PaginationLink>
-    </PaginationItem>
-  )
-
-  return items
 }
 
 export function OperationLogsClient({
@@ -284,182 +195,235 @@ export function OperationLogsClient({
 
   const visiblePageCount = Math.max(pagination.pageCount, 1)
   const hasLogs = logs.length > 0
-  const totalLabel = useMemo(() => `${pagination.total} 条记录`, [pagination.total])
+
+  const renderPageNumbers = () => {
+    return getPageNumbers(pagination.page, visiblePageCount).map((pageNumber, index) => {
+      if (pageNumber === '...') {
+        return (
+          <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted-foreground">
+            ...
+          </span>
+        )
+      }
+
+      return (
+        <Button
+          key={pageNumber}
+          type="button"
+          variant={pagination.page === pageNumber ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 min-w-8 px-2"
+          onClick={() => handlePageChange(pageNumber)}
+        >
+          <span className="sr-only">跳转到第 {pageNumber} 页</span>
+          {pageNumber}
+        </Button>
+      )
+    })
+  }
+
+  if (isLoading && logs.length === 0) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <Skeleton className="h-10 w-48" />
+        </div>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-      <form className="admin-surface flex flex-col gap-4 p-5 sm:p-6" onSubmit={handleFilterSubmit}>
-        <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">筛选日志</div>
-          <p className="text-sm leading-6 text-slate-600">支持按账号关键字、功能模块和对象类型快速检索关键操作。</p>
-        </div>
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.8fr)_220px_220px_auto]">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+      <AdminPageHeader
+        title="操作日志"
+        description="追溯全站关键配置变更、登录会话与资源授权，确保审计链条完整。"
+      />
+
+      <form className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" onSubmit={handleFilterSubmit}>
+        <div className="flex flex-1 items-center gap-2 min-w-[200px]">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchDraft}
               onChange={(event) => setSearchDraft(event.target.value)}
-              placeholder="搜索账号、对象、动作或路径"
-              className="pl-11"
+              placeholder="搜索账号、对象、动作"
+              className="h-8 pl-9"
             />
           </div>
-          <select
-            value={moduleDraft}
-            onChange={(event) => setModuleDraft(event.target.value)}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            {moduleOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={targetTypeDraft}
-            onChange={(event) => setTargetTypeDraft(event.target.value)}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            {targetTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <Button type="submit">应用筛选</Button>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Select value={moduleDraft} onValueChange={setModuleDraft}>
+            <SelectTrigger className="h-8 w-full sm:w-[180px]">
+              <SelectValue placeholder="全部模块" />
+            </SelectTrigger>
+            <SelectContent>
+              {moduleOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={targetTypeDraft} onValueChange={setTargetTypeDraft}>
+            <SelectTrigger className="h-8 w-full sm:w-[180px]">
+              <SelectValue placeholder="全部对象" />
+            </SelectTrigger>
+            <SelectContent>
+              {targetTypeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="submit" variant="outline" size="sm" className="h-8">
+            应用筛选
+          </Button>
         </div>
       </form>
 
-      <div className="admin-table-shell">
-        <div className="admin-table-toolbar">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
-              当前 {logs.length} 条
-            </span>
-            <span className="hidden lg:inline text-slate-300">/</span>
-            <span className="hidden lg:inline">总计 {totalLabel}</span>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="space-y-3 px-6 py-6">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="first:pl-6">时间</TableHead>
-                <TableHead>操作账号</TableHead>
-                <TableHead>模块 / 动作</TableHead>
-                <TableHead>操作对象</TableHead>
-                <TableHead className="last:pr-6">说明</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {hasLogs ? (
-                logs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="first:pl-6 align-top">
-                      <div className="space-y-1">
-                        <div className="font-medium text-slate-900">{formatDate(log.createdAt)}</div>
-                        <div className="text-xs text-slate-500">{log.ipAddress || 'IP 未记录'}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div className="space-y-2">
-                        <Badge variant={log.actorType === 'user' ? 'default' : log.actorType === 'api_key' ? 'secondary' : 'outline'}>
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-background">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-[180px]">最后操作时间</TableHead>
+              <TableHead className="w-[200px]">操作账号</TableHead>
+              <TableHead className="w-[180px]">模块 / 动作</TableHead>
+              <TableHead className="w-[200px]">操作对象</TableHead>
+              <TableHead>摘要说明</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {hasLogs ? (
+              logs.map((log) => (
+                <TableRow key={log.id} className="group">
+                  <TableCell className="align-top py-4">
+                    <div className="space-y-1">
+                      <div className="font-medium text-foreground">{formatDate(log.createdAt)}</div>
+                      <div className="text-xs text-muted-foreground">{log.ipAddress || 'IP 未记录'}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top py-4">
+                    <div className="space-y-2">
+                      <div className="flex">
+                        <Badge variant={log.actorType === 'user' ? 'default' : log.actorType === 'api_key' ? 'secondary' : 'outline'} className="h-4 px-1 text-[10px]">
                           {log.actorType === 'user' ? '账号' : log.actorType === 'api_key' ? 'API Key' : '系统'}
                         </Badge>
-                        <div>
-                          <div className="font-medium text-slate-900">{log.actorName || log.actorEmail || '未知操作方'}</div>
-                          <div className="text-xs text-slate-500">{log.actorEmail || log.actorClientId || '-'}</div>
-                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div className="space-y-2">
-                        <Badge variant="outline">{moduleOptions.find((option) => option.value === log.module)?.label || log.module}</Badge>
-                        <div className="font-medium text-slate-900">{log.action}</div>
-                        <div className="text-xs text-slate-500">{log.method || '-'} {log.path || ''}</div>
+                      <div>
+                        <div className="text-sm font-medium text-foreground">{log.actorName || log.actorEmail || '未知操作方'}</div>
+                        <div className="max-w-[180px] truncate text-xs text-muted-foreground">{log.actorEmail || log.actorClientId || '-'}</div>
                       </div>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div className="space-y-1">
-                        <div className="font-medium text-slate-900">{log.targetName || log.targetId || '未命名对象'}</div>
-                        <div className="text-xs text-slate-500">
-                          {targetTypeOptions.find((option) => option.value === log.targetType)?.label || log.targetType}
-                          {log.targetId ? ` · ${log.targetId}` : ''}
-                        </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top py-4">
+                    <div className="space-y-2">
+                      <div className="flex">
+                        <Badge variant="outline" className="h-4 px-1 text-[10px]">
+                          {moduleOptions.find((option) => option.value === log.module)?.label || log.module}
+                        </Badge>
                       </div>
-                    </TableCell>
-                    <TableCell className="last:pr-6 align-top">
-                      <div className="space-y-1">
-                        <div className="text-sm text-slate-700">{log.summary || '无补充说明'}</div>
-                        {log.userAgent ? <div className="line-clamp-2 text-xs text-slate-500">{log.userAgent}</div> : null}
+                      <div className="text-sm font-medium text-foreground">{log.action}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top py-4">
+                    <div className="space-y-1">
+                      <div className="line-clamp-1 text-sm font-medium text-foreground">{log.targetName || log.targetId || '未命名对象'}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {targetTypeOptions.find((option) => option.value === log.targetType)?.label || log.targetType}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="px-6 py-14">
-                    <EmptyState
-                      title="暂无操作日志"
-                      description="当前筛选条件下没有找到任何日志记录，可以调整关键词或模块后再试。"
-                    />
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top py-4">
+                    <div className="space-y-1">
+                      <div className="text-sm leading-relaxed text-foreground">{log.summary || '无补充说明'}</div>
+                      {log.userAgent ? <div className="line-clamp-1 text-xs text-muted-foreground opacity-50 transition-opacity group-hover:opacity-100">UA: {log.userAgent}</div> : null}
+                    </div>
                   </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="py-20">
+                  <EmptyState
+                    title="暂无操作日志"
+                    description="当前筛选条件下没有找到任何日志记录，可以调整关键词或模块后再试。"
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
 
-        <div className="flex flex-col gap-4 border-t border-slate-200/70 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="text-sm text-slate-500">
-            第 <span className="font-semibold text-slate-800">{pagination.page}</span> / {visiblePageCount} 页，共 {pagination.total} 条记录
+        <div className="flex flex-col gap-4 overflow-hidden px-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Select value={String(pageSize)} onValueChange={(value) => handlePageSizeChange(Number(value))}>
+              <SelectTrigger className="h-8 w-[72px]">
+                <SelectValue placeholder={pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 50, 100].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm font-medium">每页显示</p>
+            <span className="text-sm text-muted-foreground">共 {pagination.total} 条</span>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">每页显示</span>
-              <Select value={String(pageSize)} onValueChange={(value) => handlePageSizeChange(Number(value))}>
-                <SelectTrigger className="h-9 w-[84px]">
-                  <SelectValue placeholder={pageSize} />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[10, 20, 50, 100].map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6 lg:gap-8">
+            <div className="text-sm font-medium">
+              第 {pagination.page} / {visiblePageCount} 页
             </div>
-
-            <Pagination className="mx-0 w-auto justify-start">
-              <PaginationContent>
-                <PaginationPrevious
-                  onClick={(event) => {
-                    event.preventDefault()
-                    if (pagination.page > 1) {
-                      handlePageChange(pagination.page - 1)
-                    }
-                  }}
-                  className={pagination.page <= 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-                {renderPageNumbers(pagination.page, visiblePageCount, handlePageChange)}
-                <PaginationNext
-                  onClick={(event) => {
-                    event.preventDefault()
-                    if (pagination.page < visiblePageCount) {
-                      handlePageChange(pagination.page + 1)
-                    }
-                  }}
-                  className={pagination.page >= visiblePageCount ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationContent>
-            </Pagination>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden h-8 w-8 p-0 sm:flex"
+                onClick={() => handlePageChange(1)}
+                disabled={pagination.page <= 1}
+              >
+                <span className="sr-only">首页</span>
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+              >
+                <span className="sr-only">上一页</span>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {renderPageNumbers()}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page >= visiblePageCount}
+              >
+                <span className="sr-only">下一页</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden h-8 w-8 p-0 sm:flex"
+                onClick={() => handlePageChange(visiblePageCount)}
+                disabled={pagination.page >= visiblePageCount}
+              >
+                <span className="sr-only">末页</span>
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

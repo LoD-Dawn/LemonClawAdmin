@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { McpsTable } from '@/components/mcps/mcps-table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AdminPageHeader } from '@/components/layout/admin-page-header'
+import { Button } from '@/components/ui/button'
+import { PlusCircle } from 'lucide-react'
+import { McpFormDialog } from '@/components/mcps/mcp-form-dialog'
 import { Visibility } from '@/types'
 
 interface McpRow {
@@ -52,6 +56,8 @@ export function McpsClient({ initialMcps, initialOrganizations, managementMode, 
   const [organizations] = useState<Organization[]>(initialOrganizations)
   const [pagination, setPagination] = useState<PaginationInfo>(initialPagination)
   const [isLoading, setIsLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [editingMcp, setEditingMcp] = useState<McpRow | null>(null)
 
   const page = parseInt(searchParams.get('page') || '1')
   const pageSize = parseInt(searchParams.get('pageSize') || '10')
@@ -103,8 +109,9 @@ export function McpsClient({ initialMcps, initialOrganizations, managementMode, 
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-end">
+      <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 w-32" />
         </div>
         <Skeleton className="h-96 w-full" />
@@ -112,7 +119,29 @@ export function McpsClient({ initialMcps, initialOrganizations, managementMode, 
     )
   }
 
+  const pageTitle = managementMode === 'super_admin'
+    ? 'MCPs'
+    : managementMode === 'department_admin'
+    ? '部门 MCPs'
+    : '我的 MCPs'
+  const pageDescription = managementMode === 'super_admin'
+    ? '管理 MCP 资源及其来源，确保平台连接项可控。'
+    : managementMode === 'department_admin'
+    ? '查看并维护部门可见的 MCP 资源。'
+    : '查看你当前可访问的 MCP 资源池。'
+
   return (
+    <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+      <AdminPageHeader
+        title={pageTitle}
+        description={pageDescription}
+        actions={
+          <Button onClick={() => { setEditingMcp(null); setOpen(true) }}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            新建 MCP
+          </Button>
+        }
+      />
       <McpsTable
         mcps={mcps}
         organizations={organizations}
@@ -122,8 +151,19 @@ export function McpsClient({ initialMcps, initialOrganizations, managementMode, 
         pagination={pagination}
         page={page}
         pageSize={pageSize}
-      onPageChange={handlePageChange}
-      onPageSizeChange={handlePageSizeChange}
-    />
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
+
+      <McpFormDialog
+        open={open}
+        onOpenChange={setOpen}
+        mcp={editingMcp}
+        organizations={organizations}
+        managementMode={managementMode}
+        managedDepartmentId={managedDepartmentId}
+        onSuccess={fetchMcps}
+      />
+    </div>
   )
 }

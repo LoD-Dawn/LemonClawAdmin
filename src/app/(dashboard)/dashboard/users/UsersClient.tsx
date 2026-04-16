@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { UsersTable } from '@/components/users/users-table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AdminPageHeader } from '@/components/layout/admin-page-header'
+import { UserFormDialog } from '@/components/users/user-form-dialog'
 
 interface User {
   id: string
@@ -110,8 +112,9 @@ export function UsersClient({ initialUsers, initialOrganizations, initialPaginat
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-end">
+      <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 w-32" />
         </div>
         <Skeleton className="h-96 w-full" />
@@ -120,16 +123,23 @@ export function UsersClient({ initialUsers, initialOrganizations, initialPaginat
   }
 
   return (
-    <UsersTable
-      users={users}
-      organizations={organizations}
-      onRefresh={fetchUsers}
-      pagination={pagination}
-      page={page}
-      pageSize={pageSize}
-      onPageChange={handlePageChange}
-      onPageSizeChange={handlePageSizeChange}
-      currentUserId={currentUserId}
-    />
+    <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+      <AdminPageHeader
+        title="用户管理"
+        description="统一维护账号、组织归属与管理角色，让权限边界更清晰。"
+        actions={<UserFormDialog organizations={organizations} onSuccess={fetchUsers} />}
+      />
+      <UsersTable
+        users={users}
+        organizations={organizations}
+        onRefresh={fetchUsers}
+        pagination={pagination}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+        currentUserId={currentUserId}
+      />
+    </div>
   )
 }

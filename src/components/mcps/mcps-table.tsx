@@ -185,17 +185,7 @@ export function McpsTable({
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="admin-surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">连接列表</div>
-          <p className="text-sm leading-6 text-slate-600">用统一字段查看 MCP 资源，方便核对来源、归属和当前管理权限。</p>
-        </div>
-        <Button onClick={() => { setEditingMcp(null); setOpen(true) }}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          新建 MCP
-        </Button>
-      </div>
+    <div className="flex flex-1 flex-col gap-4">
       <DataTable
         columns={columns}
         data={mcps}

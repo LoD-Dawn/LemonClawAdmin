@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { resolveUserLoginEntryMode } from '@/lib/default-organizations'
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 
 export const runtime = 'nodejs'
 
@@ -22,17 +23,14 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="admin-app-shell">
-      <div className="admin-shell-grid pointer-events-none absolute inset-0" />
-      <div className="relative flex min-h-screen flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
-        <Sidebar user={session.user} />
-        <div className="admin-main-shell">
-          <Header user={session.user} />
-          <main className="admin-main-surface">
-            <div className="admin-page">{children}</div>
-          </main>
+    <SidebarProvider>
+      <Sidebar user={session.user} />
+      <SidebarInset>
+        <Header user={session.user} />
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            {children}
         </div>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

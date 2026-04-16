@@ -11,8 +11,7 @@ import {
   resolveAdminAccessScope,
 } from '@/lib/admin-access'
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
-import { AdminStatCard } from '@/components/layout/admin-stat-card'
-import { Cpu, Building2, Radar } from 'lucide-react'
+import { Main } from '@/components/layout/main'
 
 export default async function McpsPage() {
   const session = await auth()
@@ -48,7 +47,7 @@ export default async function McpsPage() {
     db.mcp.count({ where: { isActive: true, ...resourceFilter } }),
   ])
 
-  const typedMcps = mcps.map((mcp: typeof mcps[number]) => ({
+  const typedMcps = mcps.map((mcp: any) => ({
     id: mcp.id,
     mcpId: mcp.mcpId,
     name: mcp.name,
@@ -64,39 +63,13 @@ export default async function McpsPage() {
     isActive: mcp.isActive,
     owner: mcp.owner,
     organization: mcp.organization,
-    canManage: canManageResource(session.user, mcp, {
+    canManage: canManageResource(session.user!, mcp, {
       scopedOrganizationIds: accessScope.scopedOrganizationIds,
     }),
   }))
 
-  const pageTitle = managementMode === 'super_admin'
-    ? 'MCPs'
-    : managementMode === 'department_admin'
-    ? '部门 MCPs'
-    : '我的 MCPs'
-  const pageDescription = managementMode === 'super_admin'
-    ? '统一管理 MCP 资源及其来源方式，确保平台连接项保持可控、可追踪。'
-    : managementMode === 'department_admin'
-    ? '聚焦部门可见的 MCP 资源，让连接配置和权限范围都保持整齐一致。'
-    : '查看你当前可访问的 MCP 资源，快速确认来源、可见性与归属。'
-  const ownershipLabel = managementMode === 'super_admin'
-    ? '全局连接池'
-    : managementMode === 'department_admin'
-    ? '部门范围'
-    : '个人可见'
-
   return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        eyebrow="MCP"
-        title={pageTitle}
-        description={pageDescription}
-      />
-      <div className="grid gap-4 md:grid-cols-3">
-        <AdminStatCard label="当前总量" value={total} icon={Cpu} hint="已启用 MCP 数量" />
-        <AdminStatCard label="组织范围" value={organizations.length} icon={Building2} tone="sky" hint="当前可挂载组织数" />
-        <AdminStatCard label="管理视角" value={ownershipLabel} icon={Radar} tone="amber" hint="依据角色动态调整" />
-      </div>
+    <Main className="flex flex-col min-h-[calc(100vh-theme(spacing.16))]">
       <McpsClient
         initialMcps={typedMcps}
         initialOrganizations={organizations}
@@ -109,6 +82,6 @@ export default async function McpsPage() {
           total,
         }}
       />
-    </div>
+    </Main>
   )
 }

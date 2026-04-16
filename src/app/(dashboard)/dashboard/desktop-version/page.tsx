@@ -5,6 +5,7 @@ import { getDesktopVersionReleaseConfig, isDesktopVersionConfigured } from '@/li
 import { AdminPageHeader } from '@/components/layout/admin-page-header'
 import { AdminStatCard } from '@/components/layout/admin-stat-card'
 import { DesktopVersionClient } from './DesktopVersionClient'
+import { Main } from '@/components/layout/main'
 
 export default async function DesktopVersionPage() {
   const session = await auth()
@@ -28,32 +29,29 @@ export default async function DesktopVersionPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <Main className="space-y-4">
       <AdminPageHeader
-        eyebrow="Desktop"
         title="桌面端版本"
-        description="统一维护桌面客户端的最新版本信息、更新说明和各平台下载地址，供管理后台和桌面端检查更新接口共用。"
+        description="统一发布并维护桌面客户端的版本信息与下载分发地址。"
       />
       <div className="grid gap-4 md:grid-cols-3">
         <AdminStatCard
           label="当前版本"
           value={config.version || '未发布'}
           icon={Download}
-          hint="桌面端接口返回的最新版本号"
+          hint="最新版本标识"
         />
         <AdminStatCard
           label="发布日期"
           value={config.date || '--'}
           icon={CalendarDays}
-          tone="sky"
-          hint="建议与实际发版日期保持一致"
+          hint="版本生效日期"
         />
         <AdminStatCard
           label="配置状态"
           value={readyToPublish ? '已就绪' : `${configuredPlatforms}/3 平台`}
           icon={MonitorSmartphone}
-          tone={readyToPublish ? 'emerald' : 'amber'}
-          hint={readyToPublish ? '桌面端已可正常检查更新' : '还需要补齐版本信息和下载地址'}
+          hint={readyToPublish ? '检查更新服务正常' : '平台补齐中'}
         />
       </div>
       <DesktopVersionClient
@@ -63,6 +61,6 @@ export default async function DesktopVersionPage() {
           updatedAt: config.updatedAt.toISOString(),
         }}
       />
-    </div>
+    </Main>
   )
 }

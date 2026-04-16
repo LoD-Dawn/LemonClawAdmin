@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Smartphone, ShieldCheck } from 'lucide-react'
+import { ShieldCheck, Smartphone } from 'lucide-react'
 import { isPhoneFormatValid } from '@/lib/phone'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -108,45 +109,38 @@ export function PhoneBindingCard({
   }
 
   return (
-    <div className="rounded-[30px] border border-amber-200/90 bg-[linear-gradient(135deg,rgba(255,251,235,0.98),rgba(255,255,255,0.96))] p-6 shadow-[0_28px_70px_-48px_rgba(245,158,11,0.4)]">
-      <div className="flex flex-col gap-5">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+    <Card>
+      <CardHeader className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-foreground">
             <Smartphone className="h-5 w-5" />
           </div>
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-medium text-amber-700">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              账号安全校验
-            </div>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">绑定手机号</h2>
-            <p className="max-w-2xl text-sm leading-6 text-slate-600">
+          <div className="space-y-1">
+            <CardTitle className="text-base">绑定手机号</CardTitle>
+            <CardDescription className="leading-6">
               {required
-                ? '你的普通用户账号还没有绑定手机号。绑定完成前，普通用户工作台会保持锁定。'
-                : '绑定手机号后，普通用户入口会统一使用手机号 + 验证码登录。'}
-            </p>
+                ? '当前普通用户入口需要手机号验证，绑定完成后才能继续使用工作台。'
+                : '绑定后，普通用户入口会统一使用手机号加短信验证码登录。'}
+            </CardDescription>
           </div>
         </div>
-
+      </CardHeader>
+      <CardContent className="space-y-4">
         <form onSubmit={handleBindPhone} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
             <div className="space-y-2">
-              <Label htmlFor="bind-phone" className="text-sm font-medium text-slate-700">
-                手机号
-              </Label>
+              <Label htmlFor="bind-phone">手机号</Label>
               <Input
                 id="bind-phone"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 placeholder="请输入手机号，如 13812345678"
-                className="h-11 rounded-2xl border-white bg-white"
+                className="h-10"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bind-sms-code" className="text-sm font-medium text-slate-700">
-                短信验证码
-              </Label>
+              <Label htmlFor="bind-sms-code">短信验证码</Label>
               <div className="flex gap-3">
                 <Input
                   id="bind-sms-code"
@@ -155,14 +149,14 @@ export function PhoneBindingCard({
                   inputMode="numeric"
                   maxLength={6}
                   placeholder="请输入 6 位验证码"
-                  className="h-11 rounded-2xl border-white bg-white tracking-[0.25em] placeholder:tracking-normal"
+                  className="h-10"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   disabled={isSendingCode || cooldown > 0}
                   onClick={handleSendCode}
-                  className="h-11 min-w-[148px] rounded-2xl border-amber-200 bg-white px-4 text-slate-800 hover:border-amber-300 hover:bg-amber-50"
+                  className="h-10 min-w-[128px]"
                 >
                   {isSendingCode ? '发送中...' : cooldown > 0 ? `${cooldown}s` : '发送验证码'}
                 </Button>
@@ -171,28 +165,25 @@ export function PhoneBindingCard({
           </div>
 
           <div className="flex items-end">
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-11 w-full rounded-2xl bg-slate-950 px-6 text-white hover:bg-slate-800 lg:w-auto"
-            >
+            <Button type="submit" disabled={isSubmitting} className="h-10 w-full lg:w-auto">
               {isSubmitting ? '绑定中...' : '确认绑定'}
             </Button>
           </div>
         </form>
 
         {success ? (
-          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {success}
-          </p>
+          <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{success}</span>
+          </div>
         ) : null}
 
         {error ? (
-          <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             {error}
-          </p>
+          </div>
         ) : null}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

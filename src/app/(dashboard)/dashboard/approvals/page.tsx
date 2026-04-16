@@ -3,15 +3,10 @@ import { redirect } from 'next/navigation'
 import type { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ApproveButton } from './approve-button'
-import { RejectButton } from './reject-button'
-import { RevokeButton } from './revoke-button'
-import { Box, CheckCircle2, Clock, Cpu, History, ShieldCheck, XCircle } from 'lucide-react'
 import { getOrganizationScopeIds } from '@/lib/organizations'
-import { AdminPageHeader } from '@/components/layout/admin-page-header'
-import { AdminStatCard } from '@/components/layout/admin-stat-card'
+import { Main } from '@/components/layout/main'
+import { Clock, CheckCircle2, XCircle, History } from 'lucide-react'
+import { ApprovalsClient } from './ApprovalsClient'
 
 type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'revoked'
 type ResourceType = 'skill' | 'mcp'
@@ -82,9 +77,9 @@ const statusOptions: StatusOption[] = [
   },
 ]
 
-const statusMeta: Record<ApplicationStatus, { badgeVariant: 'warning' | 'success' | 'destructive' | 'outline'; label: string }> = {
-  pending: { badgeVariant: 'warning', label: '待审核' },
-  approved: { badgeVariant: 'success', label: '已通过' },
+const statusMeta: Record<ApplicationStatus, { badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+  pending: { badgeVariant: 'secondary', label: '待审核' },
+  approved: { badgeVariant: 'default', label: '已通过' },
   rejected: { badgeVariant: 'destructive', label: '已拒绝' },
   revoked: { badgeVariant: 'outline', label: '已撤销' },
 }
@@ -312,150 +307,34 @@ export default async function ApprovalsPage({
 
   const totalHistory = counts.approved + counts.rejected + counts.revoked
 
+  const initialApplications = applications.map((app) => {
+    const timeline = getTimelineLabel(app)
+    return {
+      id: app.id,
+      resourceType: app.resourceType,
+      resourceName: app.resource?.name ?? null,
+      resourceIdentifier: app.resource?.identifier ?? null,
+      resourceVisibility: app.resource?.visibility ?? null,
+      userName: app.user.name,
+      userEmail: app.user.email,
+      userOrgName: app.user.organization?.name ?? null,
+      resourceOrgName: app.resource?.organization?.name ?? null,
+      status: app.status,
+      createdAt: app.createdAt.toISOString(),
+      updatedAt: app.updatedAt.toISOString(),
+      timelineLabel: timeline.label,
+      timelineValue: timeline.value,
+      isRevocable: app.status === 'approved' && !app.grant?.revokedAt,
+    }
+  })
+
   return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        eyebrow="审核"
-        title="审核管理"
-        description="统一审核 Skill 和 MCP 提交申请，待处理事项与历史记录都集中在这里查看。"
+    <Main className="flex flex-col min-h-[calc(100vh-theme(spacing.16))]">
+      <ApprovalsClient
+        initialApplications={initialApplications}
+        counts={counts}
+        selectedStatus={selectedStatus}
       />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminStatCard label="待审核" value={counts.pending} icon={Clock} hint="需要尽快处理" />
-        <AdminStatCard label="已通过" value={counts.approved} icon={CheckCircle2} tone="emerald" hint="已完成授权创建" />
-        <AdminStatCard label="已拒绝" value={counts.rejected} icon={XCircle} tone="rose" hint="历史拒绝记录" />
-        <AdminStatCard label="历史合计" value={totalHistory} icon={History} tone="sky" hint="已归档审核事项" />
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {statusOptions.map((option) => {
-          const isActive = option.key === selectedStatus
-          const count = counts[option.key]
-          return (
-            <Link
-              key={option.key}
-              href={`/dashboard/approvals?status=${option.key}`}
-              className={[
-                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'border-gray-800 bg-gray-800 text-white'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-800',
-              ].join(' ')}
-            >
-              <option.Icon className="h-4 w-4" />
-              <span>{option.label}</span>
-              <span className={isActive ? 'text-gray-200' : 'text-gray-400'}>{count}</span>
-            </Link>
-          )
-        })}
-      </div>
-
-      {applications.length === 0 ? (
-        <Card className="border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100">
-          <CardContent className="flex flex-col items-center justify-center py-14 text-center">
-            <currentOption.Icon className="mb-4 h-12 w-12 text-gray-400" />
-            <p className="text-base font-medium text-gray-700">{currentOption.emptyTitle}</p>
-            <p className="mt-1 text-sm text-gray-500">{currentOption.emptyDescription}</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {applications.map((application) => {
-            const ResourceIcon = application.resourceType === 'skill' ? Box : Cpu
-            const timeline = getTimelineLabel(application)
-            const meta = statusMeta[application.status]
-            const isPending = application.status === 'pending'
-
-            return (
-              <Card
-                key={application.id}
-                className="border-gray-200 bg-gradient-to-br from-white to-gray-50"
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="flex min-w-0 flex-1 items-start gap-3">
-                      <div className="shrink-0 rounded-lg bg-gray-100 p-2">
-                        <ResourceIcon className="h-5 w-5 text-gray-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <h3 className="truncate text-lg font-semibold text-gray-800">
-                            {application.resource?.name || '资源已删除'}
-                          </h3>
-                          <Badge variant={application.resourceType === 'skill' ? 'secondary' : 'outline'}>
-                            {application.resourceType === 'skill' ? 'Skill' : 'MCP'}
-                          </Badge>
-                          <Badge variant={meta.badgeVariant}>{meta.label}</Badge>
-                          {application.resource?.visibility && (
-                            <Badge variant="secondary">
-                              {visibilityLabelMap[application.resource.visibility] || application.resource.visibility}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="truncate text-sm text-gray-500">
-                          {application.resource?.identifier || '该资源标识已不可用'}
-                        </p>
-                      </div>
-                    </div>
-                    {isPending ? (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <ApproveButton applicationId={application.id} />
-                        <RejectButton applicationId={application.id} />
-                      </div>
-                    ) : application.status === 'approved' && !application.grant?.revokedAt ? (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <RevokeButton applicationId={application.id} />
-                      </div>
-                    ) : (
-                      <div className="flex shrink-0 items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-500">
-                        <History className="h-3.5 w-3.5" />
-                        已归档到审核历史
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-3 text-sm text-gray-600 sm:grid-cols-2 xl:grid-cols-4">
-                    <div>
-                      <p className="text-xs text-gray-400">申请人</p>
-                      <p className="mt-1 font-medium text-gray-800">
-                        {application.user.name || application.user.email}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">申请人部门</p>
-                      <p className="mt-1 font-medium text-gray-800">
-                        {application.user.organization?.name || '未分配'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">资源归属</p>
-                      <p className="mt-1 font-medium text-gray-800">
-                        {application.resource?.organization?.name || '公共 / 个人资源'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">{timeline.label}</p>
-                      <p className="mt-1 font-medium text-gray-800">{timeline.value}</p>
-                    </div>
-                  </div>
-
-                  {application.status === 'approved' && (
-                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                      <ShieldCheck className="h-4 w-4" />
-                      <span>
-                        {application.grant?.revokedAt
-                          ? '该申请曾通过，但对应授权已被撤销。'
-                          : '该申请已通过，授权关系已创建。'}
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
-    </div>
+    </Main>
   )
 }

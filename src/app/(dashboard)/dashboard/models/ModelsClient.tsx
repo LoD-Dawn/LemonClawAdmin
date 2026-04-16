@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ModelsTable } from '@/components/models/models-table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AdminPageHeader } from '@/components/layout/admin-page-header'
+import { Button } from '@/components/ui/button'
+import { PlusCircle } from 'lucide-react'
+import { ModelFormDialog } from '@/components/models/model-form-dialog'
 import { Visibility } from '@/types'
 
 interface ModelItemRow {
@@ -63,6 +67,8 @@ export function ModelsClient({ initialProviders, initialOrganizations, managemen
   const [organizations] = useState<Organization[]>(initialOrganizations)
   const [pagination, setPagination] = useState<PaginationInfo>(initialPagination)
   const [isLoading, setIsLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [editingProvider, setEditingProvider] = useState<ModelProviderRow | null>(null)
 
   const page = parseInt(searchParams.get('page') || '1')
   const pageSize = parseInt(searchParams.get('pageSize') || '10')
@@ -114,8 +120,9 @@ export function ModelsClient({ initialProviders, initialOrganizations, managemen
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-end">
+      <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 w-32" />
         </div>
         <Skeleton className="h-96 w-full" />
@@ -123,18 +130,51 @@ export function ModelsClient({ initialProviders, initialOrganizations, managemen
     )
   }
 
+  const pageTitle = managementMode === 'super_admin'
+    ? '模型管理'
+    : managementMode === 'department_admin'
+    ? '部门模型'
+    : '我的模型'
+  const pageDescription = managementMode === 'super_admin'
+    ? '统一维护模型提供商、默认模型和客户端分层。'
+    : managementMode === 'department_admin'
+    ? '维护部门范围内的模型配置与提供商。'
+    : '维护你自己的个人模型提供商配置。'
+
   return (
-    <ModelsTable
-      providers={providers}
-      organizations={organizations}
-      managementMode={managementMode}
-      managedDepartmentId={managedDepartmentId}
-      onRefresh={fetchProviders}
-      pagination={pagination}
-      page={page}
-      pageSize={pageSize}
-      onPageChange={handlePageChange}
-      onPageSizeChange={handlePageSizeChange}
-    />
+    <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+      <AdminPageHeader
+        title={pageTitle}
+        description={pageDescription}
+        actions={
+          <Button onClick={() => { setEditingProvider(null); setOpen(true) }}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            新建模型提供商
+          </Button>
+        }
+      />
+      <ModelsTable
+        providers={providers}
+        organizations={organizations}
+        managementMode={managementMode}
+        managedDepartmentId={managedDepartmentId}
+        onRefresh={fetchProviders}
+        pagination={pagination}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
+
+      <ModelFormDialog
+        open={open}
+        onOpenChange={setOpen}
+        provider={editingProvider}
+        organizations={organizations}
+        managementMode={managementMode}
+        managedDepartmentId={managedDepartmentId}
+        onSuccess={fetchProviders}
+      />
+    </div>
   )
 }

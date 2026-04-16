@@ -154,17 +154,7 @@ export function SkillsTable({
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="admin-surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">资源列表</div>
-          <p className="text-sm leading-6 text-slate-600">按名称、可见范围、来源和归属统一查看 Skill 资源，便于后续持续维护。</p>
-        </div>
-        <Button onClick={() => { setEditingSkill(null); setOpen(true) }}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          新建 Skill
-        </Button>
-      </div>
+    <div className="flex flex-1 flex-col gap-4">
       <DataTable
         columns={columns}
         data={skills}

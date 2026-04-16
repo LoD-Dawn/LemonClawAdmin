@@ -209,19 +209,7 @@ export function ModelsTable({
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="admin-surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">模型配置</div>
-          <p className="text-sm leading-6 text-slate-600">
-            在同一个视图里维护提供商、默认模型和模型清单，方便直接生成客户端需要的配置结构。
-          </p>
-        </div>
-        <Button onClick={() => { setEditingProvider(null); setOpen(true) }}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          新建模型提供商
-        </Button>
-      </div>
+    <div className="flex flex-1 flex-col gap-4">
       <DataTable
         columns={columns}
         data={providers}
