@@ -88,13 +88,13 @@ function DashboardMetricCard({
   accentClassName: string
 }) {
   return (
-    <Card className="group relative overflow-hidden border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-md">
+    <Card className="group relative overflow-hidden border border-slate-200 bg-white shadow-none transition-all duration-300">
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">
             {label}
           </p>
-          <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset bg-slate-50/50 ring-slate-200/60', accentClassName)}>
+          <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-slate-200 bg-slate-50', accentClassName)}>
             <Icon className="h-4 w-4" />
           </div>
         </div>
@@ -160,7 +160,7 @@ function DetailRow({
   value: string
 }) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
+    <div className="flex items-center justify-between py-3 border-b border-slate-200 last:border-0 hover:bg-slate-50 px-2 rounded-lg transition-colors">
       <span className="text-[12px] font-semibold text-slate-600">
         {label}
       </span>
@@ -390,7 +390,7 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
           <Card
             id="subscription"
-            className="overflow-hidden border border-slate-200 bg-white shadow-sm"
+            className="overflow-hidden border border-slate-200 bg-white shadow-none"
           >
             <CardHeader className="border-b border-slate-50 p-6">
               <div className="flex items-center justify-between">
@@ -414,14 +414,14 @@ export default async function ProfilePage() {
             </CardHeader>
 
             <CardContent className="space-y-8 p-6">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-6">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/30 p-6">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                         {tierMeta.label}
                       </h2>
-                      <Badge className="h-6 rounded-full border border-slate-200 bg-slate-100 px-2.5 text-[10px] font-bold tracking-tight text-slate-700">
+                      <Badge className="h-6 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-bold tracking-tight text-slate-700">
                         {pricingVersion}
                       </Badge>
                     </div>
@@ -536,7 +536,7 @@ export default async function ProfilePage() {
 
         <Card
           id="usage"
-          className="overflow-hidden border border-slate-200 bg-white shadow-sm"
+          className="overflow-hidden border border-slate-200 bg-white shadow-none"
         >
           <CardHeader className="flex flex-col gap-4 border-b border-slate-200 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
