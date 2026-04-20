@@ -198,7 +198,7 @@ export function OperationLogsClient({
 
   const renderPageNumbers = () => {
     return getPageNumbers(pagination.page, visiblePageCount).map((pageNumber, index) => {
-      if (pageNumber === '...') {
+      if (typeof pageNumber !== 'number') {
         return (
           <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted-foreground">
             ...

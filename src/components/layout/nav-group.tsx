@@ -29,18 +29,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
-export interface NavItem {
+export interface NavLeafItem {
   href: string
   label: string
-  icon: any
+  icon?: any
   badge?: string
-  items?: NavItem[]
+  items?: never
 }
+
+export interface NavParentItem {
+  label: string
+  icon?: any
+  badge?: string
+  items: NavLeafItem[]
+  href?: never
+}
+
+export type NavItem = NavLeafItem | NavParentItem
 
 export interface NavGroupProps {
   title: string
   items: NavItem[]
+}
+
+function isNavLeafItem(item: NavItem): item is NavLeafItem {
+  return typeof (item as NavLeafItem).href === 'string'
 }
 
 export function NavGroup({ title, items }: NavGroupProps) {
@@ -52,9 +67,9 @@ export function NavGroup({ title, items }: NavGroupProps) {
       {title && <SidebarGroupLabel>{title}</SidebarGroupLabel>}
       <SidebarMenu>
         {items.map((item) => {
-          const key = `${item.label}-${item.href}`
+          const key = `${item.label}-${isNavLeafItem(item) ? item.href : 'group'}`
 
-          if (!item.items)
+          if (isNavLeafItem(item))
             return <SidebarMenuLink key={key} item={item} pathname={pathname} />
 
           if (state === 'collapsed' && !isMobile)
@@ -73,7 +88,7 @@ function NavBadge({ children, className }: { children: ReactNode; className?: st
   return <Badge className={cn('rounded-full px-1 py-0 text-xs', className)}>{children}</Badge>
 }
 
-function SidebarMenuLink({ item, pathname }: { item: NavItem; pathname: string }) {
+function SidebarMenuLink({ item, pathname }: { item: NavLeafItem; pathname: string }) {
   const { setOpenMobile } = useSidebar()
   const isActive = pathname === item.href
 
@@ -98,7 +113,7 @@ function SidebarMenuCollapsible({
   item,
   pathname,
 }: {
-  item: NavItem
+  item: NavParentItem
   pathname: string
 }) {
   const { setOpenMobile } = useSidebar()
@@ -146,7 +161,7 @@ function SidebarMenuCollapsedDropdown({
   item,
   pathname,
 }: {
-  item: NavItem
+  item: NavParentItem
   pathname: string
 }) {
   const hasActiveChild = item.items?.some((subItem) => pathname === subItem.href)

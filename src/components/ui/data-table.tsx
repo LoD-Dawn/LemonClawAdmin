@@ -128,7 +128,7 @@ export function DataTable<TData, TValue>({
 
   const renderPageNumbers = () => {
     return getPageNumbers(currentPage, visiblePageCount).map((pageNumber, index) => {
-      if (pageNumber === '...') {
+      if (typeof pageNumber !== 'number') {
         return (
           <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted-foreground">
             ...
