@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Copy, KeyRound, Link2, Plus, RefreshCcw, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, Copy, KeyRound, Link2, Loader2, Plus, RefreshCcw, ShieldCheck } from 'lucide-react'
 
 type OAuthClientItem = {
   id: string
@@ -61,6 +61,7 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
   const [selectedClientId, setSelectedClientId] = useState(initialClients[0]?.id ?? '')
 
   const [name, setName] = useState(initialClients[0]?.name ?? '')
+  const [clientId, setClientId] = useState(initialClients[0]?.clientId ?? '')
   const [status, setStatus] = useState(initialClients[0]?.isActive ? 'active' : 'inactive')
   const [redirectUriText, setRedirectUriText] = useState(toRedirectUriLines(initialClients[0]?.allowedRedirectUris ?? []))
   const [defaultOrganizationId, setDefaultOrganizationId] = useState(initialClients[0]?.defaultOrganizationId ?? '')
@@ -76,6 +77,7 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
   const [isSaving, setIsSaving] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [isRotatingSecret, setIsRotatingSecret] = useState(false)
+  const [togglingClientId, setTogglingClientId] = useState('')
   const [revealedSecret, setRevealedSecret] = useState('')
   const [revealedSecretClientId, setRevealedSecretClientId] = useState('')
 
@@ -93,13 +95,17 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
     }
 
     setName(selectedClient.name)
+    setClientId(selectedClient.clientId)
     setStatus(selectedClient.isActive ? 'active' : 'inactive')
     setRedirectUriText(toRedirectUriLines(selectedClient.allowedRedirectUris))
     setDefaultOrganizationId(selectedClient.defaultOrganizationId ?? '')
     setUpdatedAt(selectedClient.updatedAt)
+  }, [selectedClient])
+
+  useEffect(() => {
     setRevealedSecret('')
     setRevealedSecretClientId('')
-  }, [selectedClient])
+  }, [selectedClientId])
 
   const selectedOrganization = organizations.find((organization) => organization.id === defaultOrganizationId) ?? null
 
@@ -134,6 +140,26 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
       next[existingIndex] = nextClient
       return next
     })
+  }
+
+  async function updateClient(
+    client: OAuthClientItem,
+    overrides?: Partial<Pick<OAuthClientItem, 'clientId' | 'name' | 'isActive' | 'allowedRedirectUris' | 'defaultOrganizationId'>>
+  ) {
+    const response = await fetch(`/api/v1/admin/oauth-clients/${client.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: overrides?.clientId ?? client.clientId,
+        name: overrides?.name ?? client.name,
+        isActive: overrides?.isActive ?? client.isActive,
+        allowedRedirectUris: overrides?.allowedRedirectUris ?? client.allowedRedirectUris,
+        defaultOrganizationId: overrides?.defaultOrganizationId ?? client.defaultOrganizationId,
+      }),
+    })
+
+    const result = await response.json()
+    return { response, result }
   }
 
   async function handleCreate() {
@@ -193,25 +219,20 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
 
   async function handleSave() {
     if (!selectedClient) return
-    if (!name.trim() || redirectUris.length === 0) {
-      toast({ title: '请完整填写名称和回调地址', variant: 'destructive' })
+    if (!name.trim() || !clientId.trim() || redirectUris.length === 0) {
+      toast({ title: '请完整填写名称、客户端 ID 和回调地址', variant: 'destructive' })
       return
     }
 
     setIsSaving(true)
     try {
-      const response = await fetch(`/api/v1/admin/oauth-clients/${selectedClient.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          isActive: status === 'active',
-          allowedRedirectUris: redirectUris,
-          defaultOrganizationId: defaultOrganizationId || null,
-        }),
+      const { response, result } = await updateClient(selectedClient, {
+        clientId: clientId.trim(),
+        name: name.trim(),
+        isActive: status === 'active',
+        allowedRedirectUris: redirectUris,
+        defaultOrganizationId: defaultOrganizationId || null,
       })
-
-      const result = await response.json()
       if (!response.ok) {
         toast({ title: '保存失败', description: result.error || 'OAuth 客户端保存失败', variant: 'destructive' })
         return
@@ -224,6 +245,44 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
       toast({ title: '保存失败', description: '网络异常，请稍后重试', variant: 'destructive' })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleToggleClientStatus(client: OAuthClientItem) {
+    setTogglingClientId(client.id)
+    try {
+      const nextIsActive = !client.isActive
+      const { response, result } = await updateClient(client, {
+        isActive: nextIsActive,
+      })
+
+      if (!response.ok) {
+        toast({
+          title: nextIsActive ? '启用失败' : '停用失败',
+          description: result.error || '客户端状态更新失败',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      upsertClient(result.data)
+
+      if (selectedClientId === client.id) {
+        setStatus(result.data.isActive ? 'active' : 'inactive')
+        setUpdatedAt(result.data.updatedAt)
+      }
+
+      toast({
+        title: result.data.isActive ? '客户端已启用' : '客户端已停用',
+      })
+    } catch {
+      toast({
+        title: client.isActive ? '停用失败' : '启用失败',
+        description: '网络异常，请稍后重试',
+        variant: 'destructive',
+      })
+    } finally {
+      setTogglingClientId('')
     }
   }
 
@@ -335,14 +394,45 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
               <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 p-6 text-sm leading-6 text-slate-500">还没有第三方 OAuth 客户端。先创建一个客户端，再把 `client_id`、`client_secret` 和回调地址配置到外部平台。</div>
             ) : clients.map((client) => {
               const isSelected = client.id === selectedClientId
+              const isToggling = togglingClientId === client.id
               return (
-                <button key={client.id} type="button" onClick={() => setSelectedClientId(client.id)} className={cn('w-full rounded-[24px] border p-4 text-left transition-all duration-200', isSelected ? 'border-slate-900 bg-slate-900 text-white shadow-[0_24px_48px_-36px_rgba(15,23,42,0.8)]' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50')}>
+                <div
+                  key={client.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedClientId(client.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setSelectedClientId(client.id)
+                    }
+                  }}
+                  className={cn('w-full rounded-[24px] border p-4 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2', isSelected ? 'border-slate-900 bg-slate-900 text-white shadow-[0_24px_48px_-36px_rgba(15,23,42,0.8)]' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50')}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className={cn('font-medium', isSelected ? 'text-white' : 'text-slate-900')}>{client.name}</p>
                       <p className={cn('mt-1 break-all font-mono text-xs', isSelected ? 'text-slate-300' : 'text-slate-500')}>{client.clientId}</p>
                     </div>
-                    <Badge variant={client.isActive ? 'success' : 'warning'}>{client.isActive ? '已启用' : '已停用'}</Badge>
+                    <button
+                      type="button"
+                      className="rounded-full"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        void handleToggleClientStatus(client)
+                      }}
+                      disabled={isToggling}
+                      aria-label={client.isActive ? `停用 ${client.name}` : `启用 ${client.name}`}
+                    >
+                      <Badge variant={client.isActive ? 'success' : 'warning'} className="cursor-pointer">
+                        {isToggling ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            处理中
+                          </>
+                        ) : client.isActive ? '已启用' : '已停用'}
+                      </Badge>
+                    </button>
                   </div>
                   <div className={cn('mt-4 flex items-center gap-2 text-xs', isSelected ? 'text-slate-300' : 'text-slate-500')}>
                     <Link2 className="h-3.5 w-3.5" />
@@ -354,7 +444,7 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
                       {organizations.find((organization) => organization.id === client.defaultOrganizationId)?.name ?? '已删除组织'}
                     </div>
                   ) : null}
-                </button>
+                </div>
               )
             })}
           </CardContent>
@@ -413,7 +503,18 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
               <div className="grid gap-5 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>客户端 ID</Label>
-                  <Input value={selectedClient.clientId} readOnly className="bg-slate-50 font-mono text-slate-500" />
+                  <Input
+                    value={clientId}
+                    onChange={(event) => setClientId(event.target.value)}
+                    readOnly={status === 'active'}
+                    className={cn(
+                      'font-mono',
+                      status === 'active' ? 'bg-slate-50 text-slate-500' : 'bg-white text-slate-900'
+                    )}
+                  />
+                  <p className="text-sm leading-6 text-slate-500">
+                    停用状态下允许修改 `client_id`。重新启用前，请先同步第三方平台配置。
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>最近更新</Label>
@@ -454,6 +555,7 @@ export function OAuthClientsManager({ initialClients, organizations }: OAuthClie
                 <Button type="button" onClick={handleSave} disabled={isSaving}>{isSaving ? '保存中...' : '保存配置'}</Button>
                 <Button type="button" variant="outline" onClick={() => {
                   setName(selectedClient.name)
+                  setClientId(selectedClient.clientId)
                   setStatus(selectedClient.isActive ? 'active' : 'inactive')
                   setRedirectUriText(toRedirectUriLines(selectedClient.allowedRedirectUris))
                   setDefaultOrganizationId(selectedClient.defaultOrganizationId ?? '')
